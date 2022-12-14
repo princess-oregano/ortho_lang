@@ -65,6 +65,7 @@ out: $(OBJDIR) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
 	printf "%s\n" "Linking..."
 	$(CXX) $(OBJ_BACK_END) -o $(BACK_END) $(CXXFLAGS)
 	$(CXX) $(OBJ_FRONT_END) -o $(FRONT_END) $(CXXFLAGS)
+	$(CXX) $(OBJ_TREE) -o $(TREE) $(CXXFLAGS)
 
 $(OBJDIR_BACK_END)/%.o: $(SRCDIR_BACK_END)/%.cpp
 	printf "%s\n" "Compiling $@..."
