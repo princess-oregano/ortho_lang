@@ -1,134 +1,54 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include "tree.h"
-#include "log.h"
+#ifndef TREE_H
+#define TREE_H
 
-static int
-tree_resize(tree_t *tree, int new_cap)
-{
-        if (new_cap <= 0) {
-                log("Error: Invalid capacity.\n"
-                    "Exiting %s.\n", __PRETTY_FUNCTION__);
+#include "../types.h"
 
-                return ERR_BAD_CAP;
-        }
+enum tree_error_t {
+        ERR_NO_ERR = 0,
+        ERR_ALLOC = 1,
+        ERR_BAD_POS = 2,
+        ERR_BAD_CAP = 3,
+};
 
-        tree_node_t *tmp_nodes = (tree_node_t *) realloc(tree->nodes,
-                                 (size_t) new_cap * sizeof(tree_node_t));
+struct tree_data_t {
+        diff_obj_type_t type = DIFF_POISON;
+        value_t val = {};
+        bool copy = false;
+        bool replace = false;
+};
 
-        if (tmp_nodes == nullptr) {
-                log("Error: Couldn't allocate memory for nodes.\n"
-                    "Exiting %s.\n", __PRETTY_FUNCTION__);
+struct tree_node_t {
+        tree_data_t data {};
+        int left = -1;
+        int right = -1;
+        int next_free = -1;
+};
 
-                return ERR_ALLOC;
-        }
+struct tree_t {
+        tree_node_t *nodes = nullptr;
+        int root = 0;
+        int cap = 0;
+        int free = 0;
+};
 
-        tree->nodes = tmp_nodes;
-
-        for (int i = tree->cap; i < new_cap; i++) {
-                tree->nodes[i].data = {};
-                tree->nodes[i].left = -1;
-                tree->nodes[i].right = -1;
-                tree->nodes[i].next_free = i + 1;
-        }
-
-        tree->nodes[tree->cap].next_free = tree->cap + 1;
-        tree->cap = new_cap;
-
-        return ERR_NO_ERR;
-}
-
+// Constructs tree with 'cap' free unbounded nodes.
 int
-tree_ctor(tree_t *tree, int cap)
-{
-        int err = ERR_NO_ERR;
-
-        if ((err = tree_resize(tree, cap)) != ERR_NO_ERR)
-                return err;
-
-        tree->free = 0;
-
-        return ERR_NO_ERR;
-}
-
+tree_ctor(tree_t *tree, int cap);
+// Insert a node with given data to given position.
 int
-node_insert(tree_t *tree, int *parent, tree_data_t data)
-{
-        assert(tree);
-        assert(parent);
-        assert(*parent >= -1);
-
-        tree->nodes[tree->free].data = data;
-        node_bound(parent, tree->free);
-        tree->free = tree->nodes[tree->free].next_free;
-
-        if (tree->free >= tree->cap) {
-                log("Free = %d, capacity = %d\n", tree->free, tree->cap);
-                log("Resizing...\n");
-                int err = ERR_NO_ERR;
-                if ((err = tree_resize(tree, tree->cap * 2)) != ERR_NO_ERR)
-                        return err;
-        }
-
-        return ERR_NO_ERR;
-}
-
+node_insert(tree_t *tree, int *parent, tree_data_t data);
+// Bounds two nodes.
 void
-node_bound(int *parent, int node)
-{
-        assert(parent);
-
-        if (*parent != -1 && node != 0) {
-                log("Warning: pointer is already initialized.\n"
-                    "Bounding may lead to loss of data.\n"
-                    "parent = %d, node = %d\n", *parent, node);
-        }
-
-        *parent = node;
-}
-
+node_bound(int *parent, int node);
+// Finds node in a tree.
+void
+node_find(tree_node_t *node);
+// Removes node and all children of it.
 int
-node_remove(tree_t *tree, int *pos)
-{
-        assert(tree);
-        if (*pos < 0) {
-                log("Invalid position.\n");
-                return ERR_BAD_POS;
-        }
-
-        tree->nodes[*pos].data = {};
-
-        if (tree->nodes[*pos].left != -1)
-                node_remove(tree, &tree->nodes[*pos].left);
-
-        if (tree->nodes[*pos].right != -1)
-                node_remove(tree, &tree->nodes[*pos].right);
-
-        tree->nodes[*pos].left = -1;
-        tree->nodes[*pos].right = -1;
-
-        tree->nodes[*pos].next_free = tree->free;
-        tree->free = *pos;
-
-        *pos = -1;
-
-        return ERR_NO_ERR;
-}
-
+node_remove(tree_t *tree, int *pos);
+// Destructs tree.
 int
-tree_dtor(tree_t *tree)
-{
-        int err = ERR_NO_ERR;
-        if ((err = node_remove(tree, &tree->root)) != ERR_NO_ERR)
-                return err;
-        free(tree->nodes);
+tree_dtor(tree_t *tree);
 
-        tree->root = -1;
-        tree->cap = -1;
-        tree->free = -1;
-
-        return ERR_NO_ERR;
-}
+#endif // TREE_H
 
