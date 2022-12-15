@@ -1,0 +1,20 @@
+GRAMMAR RULES OF ORTHOLANG
+
+VAR -- variable
+NUM -- number
+
+general := brace_expr ;
+
+primary_expr := 
+        NUM
+
+add_expr := 
+        mul_expr {[+-] mul_expr}*
+
+mul_expr :=
+        brace_expr {[*/] brace_expr}*
+
+brace_expr :=
+        (add_expr) | primary_expr
+
+
