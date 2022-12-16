@@ -5,11 +5,10 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
-#include "lexer.h"
-#include "differentiator.h"
+#include "../front_end/lexer.h"
 #include "tree_dump.h"
 #include "system.h"
-#include "log.h"
+#include "../log.h"
 
 // Stream of dump output.
 static FILE *DMP_STREAM = nullptr;
@@ -51,27 +50,6 @@ generate_graph()
 }
 
 static void
-const_node_graph_dump(tree_t *tree, int curr, int node_count)
-{
-        switch (tree->nodes[curr].data.val.m_const) {
-                case CONST_E:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\ne\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case CONST_PI:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\nπ\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                default:
-                        log("Invalid type encountered.\n");
-                        assert(0 && "Invalid const type encountered.");
-                        break;
-        }
-}
-
-static void
 op_node_graph_dump(tree_t *tree, int curr, int node_count)
 {
         switch (tree->nodes[curr].data.val.op) {
@@ -95,26 +73,6 @@ op_node_graph_dump(tree_t *tree, int curr, int node_count)
                                 "node%d [label = \"%d\\n/\", shape = rect]\n",
                                 node_count, curr);
                         break;
-                case OP_POW:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n^\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_SIN:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\nsin\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_COS:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\ncos\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_LN:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\nln\", shape = rect]\n",
-                                node_count, curr);
-                        break;
                 default:
                         log("Invalid type encountered: %d.\n", 
                                         tree->nodes[curr].data.val.op);
@@ -131,30 +89,27 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
 
         // Need to add switch to print data correctly.
         switch (tree->nodes[curr].data.type) {
-                case DIFF_BRACE:
+                case TOK_PUNC:
                         fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\nClosed = %d\", shape = rect]\n",
-                                node_count, curr, tree->nodes[curr].data.val.closed);
+                                "node%d [label = \"%d\\n punc\", shape = rect]\n",
+                                node_count, curr);
                         break;
-                case DIFF_POISON:
+                case TOK_POISON:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\nVoid.\", shape = rect]\n",
                                 node_count, curr);
                         break;
-                case DIFF_VAR:
+                case TOK_VAR:
                         fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n%c\", shape = rect]\n",
+                                "node%d [label = \"%d\\n%s\", shape = rect]\n",
                                 node_count, curr, tree->nodes[curr].data.val.var);
                         break;
-                case DIFF_NUM:
+                case TOK_NUM:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\n%lg\", shape = rect]\n",
                                 node_count, curr, tree->nodes[curr].data.val.num);
                         break;
-                case DIFF_CONST:
-                        const_node_graph_dump(tree, curr, node_count);
-                        break;
-                case DIFF_OP:
+                case TOK_OP:
                         op_node_graph_dump(tree, curr, node_count);
                         break;
                 default:

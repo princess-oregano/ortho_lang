@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -15,9 +16,9 @@ get_word(char **word, char *start, int n)
                 return LEX_ALLOC;
         }
 
-        *word = tmp;
+        memcpy(tmp, start, n);
 
-        memcpy(*word, start, n);
+        *word = tmp;
 
         return LEX_NO_ERR;
 }
@@ -25,9 +26,29 @@ get_word(char **word, char *start, int n)
 static int
 lex_token(token_t *token, char *str)
 {
+        char *tmp = nullptr;
+        int num = strtod(str, &tmp);
+        if (str != tmp) {
+                token->type = TOK_NUM;
+                token->val.num = num;
+                return LEX_NO_ERR;
+        }
+
         if (strcmp(str, ";")) {
                 token->type = TOK_PUNC;
-                token->val.punc = ';';
+                token->val.punc = PUNC_COLON;
+        }else if (strcmp(str, "+")) {
+                token->type = TOK_PUNC;
+                token->val.op = OP_ADD;
+        }else if (strcmp(str, "-")) {
+                token->type = TOK_PUNC;
+                token->val.op = OP_SUB;
+        }else if (strcmp(str, "*")) {
+                token->type = TOK_PUNC;
+                token->val.op = OP_MUL;
+        }else if (strcmp(str, "/")) {
+                token->type = TOK_PUNC;
+                token->val.op = OP_DIV;
         } else {
                 log("Error: Invalid command '%s'", str);
                 return LEX_INV_USG;

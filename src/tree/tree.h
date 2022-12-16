@@ -1,7 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
-#include "../types.h"
+#include "../front_end/types.h"
 
 enum tree_error_t {
         ERR_NO_ERR = 0,
@@ -11,10 +11,8 @@ enum tree_error_t {
 };
 
 struct tree_data_t {
-        diff_obj_type_t type = DIFF_POISON;
+        tok_type_t type = TOK_POISON;
         value_t val = {};
-        bool copy = false;
-        bool replace = false;
 };
 
 struct tree_node_t {
