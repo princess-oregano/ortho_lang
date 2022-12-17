@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include "tree.h"
-#include "log.h"
+#include "../log.h"
 
 static int
 tree_resize(tree_t *tree, int new_cap)

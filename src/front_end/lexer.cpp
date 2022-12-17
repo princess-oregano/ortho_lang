@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstdlib>
 #include <stdlib.h>
 #include <string.h>
@@ -27,27 +28,33 @@ static int
 lex_token(token_t *token, char *str)
 {
         char *tmp = nullptr;
-        int num = strtod(str, &tmp);
+        double num = strtod(str, &tmp);
         if (str != tmp) {
                 token->type = TOK_NUM;
                 token->val.num = num;
                 return LEX_NO_ERR;
         }
 
-        if (strcmp(str, ";")) {
+        if (strcmp(str, ";") == 0) {
                 token->type = TOK_PUNC;
                 token->val.punc = PUNC_COLON;
-        }else if (strcmp(str, "+")) {
+        }else if (strcmp(str, "(") == 0) {
                 token->type = TOK_PUNC;
+                token->val.punc = PUNC_OPBRACE;
+        }else if (strcmp(str, ")") == 0) {
+                token->type = TOK_PUNC;
+                token->val.punc = PUNC_CLBRACE;
+        }else if (strcmp(str, "+") == 0) {
+                token->type = TOK_OP;
                 token->val.op = OP_ADD;
-        }else if (strcmp(str, "-")) {
-                token->type = TOK_PUNC;
+        }else if (strcmp(str, "-") == 0) {
+                token->type = TOK_OP;
                 token->val.op = OP_SUB;
-        }else if (strcmp(str, "*")) {
-                token->type = TOK_PUNC;
+        }else if (strcmp(str, "*") == 0) {
+                token->type = TOK_OP;
                 token->val.op = OP_MUL;
-        }else if (strcmp(str, "/")) {
-                token->type = TOK_PUNC;
+        }else if (strcmp(str, "/") == 0) {
+                token->type = TOK_OP;
                 token->val.op = OP_DIV;
         } else {
                 log("Error: Invalid command '%s'", str);
@@ -94,7 +101,7 @@ lexer(char *buffer, int size, tok_arr_t *arr)
         ssize_t lex_ret = 0;
         int tok_count = 0;
         char *word = nullptr;
-        while (*buffer) {
+        while (*(buffer + 1)) {
                 while (isspace(*buffer))
                         buffer++;
 
@@ -109,6 +116,7 @@ lexer(char *buffer, int size, tok_arr_t *arr)
                 }
 
                 lex_token(&arr->tok[tok_count], word);
+                free(word);
                 tok_count++;
 
                 buffer = new_buffer;
@@ -122,4 +130,3 @@ lexer(char *buffer, int size, tok_arr_t *arr)
 
         return LEX_NO_ERR;
 }
-

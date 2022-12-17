@@ -2,11 +2,11 @@
 #include <assert.h>
 #include "parser.h"
 #include "../tree/tree.h"
-#include "../tree/tree_dump.cpp"
+#include "../tree/tree_dump.h"
 #include "../log.h"
 
 #define TOK arr->tok[*t_count]
-#define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == (OP_##NAME))
+#define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == OP_##NAME)
 #define IS_PUNC(NAME) (TOK.type == TOK_PUNC && TOK.val.punc == (PUNC_##NAME))
 #define INSERT node_insert(ast, pos, {.type = TOK.type, .val = TOK.val})
 
@@ -71,13 +71,13 @@ mul_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        primary_expr(arr, t_count, ast, pos);
+        brace_expr(arr, t_count, ast, pos);
         while (IS_OP(DIV) || IS_OP(MUL)) {
-                int *tmp = pos; 
+                int tmp = *pos; 
                 INSERT;
-                node_bound(pos, *tmp);
+                node_bound(&ast->nodes[*pos].left, tmp);
                 (*t_count)++;
-                brace_expr(arr, t_count, ast, pos);
+                brace_expr(arr, t_count, ast, &ast->nodes[*pos].right);
         }
 
         return PAR_NO_ERR;
@@ -93,11 +93,11 @@ add_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         
         mul_expr(arr, t_count, ast, pos);
         while (IS_OP(ADD) || IS_OP(SUB)) {
-                int *tmp = pos; 
+                int tmp = *pos; 
                 INSERT;
-                node_bound(pos, *tmp);
+                node_bound(&ast->nodes[*pos].left, tmp);
                 (*t_count)++;
-                brace_expr(arr, t_count, ast, pos);
+                mul_expr(arr, t_count, ast, &ast->nodes[*pos].right);
         }
 
         return PAR_NO_ERR;
@@ -107,7 +107,7 @@ static int
 general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 {
         add_expr(arr, t_count, ast, pos);
-        if (IS_PUNC(COLON)) {
+        if (!IS_PUNC(COLON)) {
                 log("Error: Expected end of statement ';'.\n");
                 return -1;
         }

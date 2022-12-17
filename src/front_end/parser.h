@@ -14,7 +14,7 @@ enum par_err_t {
 
 // Parses token array to AST.
 int
-parser(tok_arr_t *arr, tree_t ast);
+parser(tok_arr_t *arr, tree_t *ast);
 // Writes AST to file.
 int
 par_write_ast(tree_t *ast, FILE *stream);

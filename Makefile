@@ -2,6 +2,8 @@ BACK_END := back_end
 FRONT_END := front_end
 TREE := tree
 
+TEST := test
+
 SRCDIR = src
 OBJDIR = obj
 
@@ -12,10 +14,12 @@ OBJDIR_BACK_END := $(addprefix $(OBJDIR)/, $(BACK_END))
 OBJDIR_FRONT_END := $(addprefix $(OBJDIR)/, $(FRONT_END))
 OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 
+SRC := main.cpp file.cpp log.cpp
 SRC_BACK_END := 
-SRC_FRONT_END := 
-SRC_TREE :=
+SRC_FRONT_END := lexer.cpp parser.cpp
+SRC_TREE := tree.cpp tree_dump.cpp system.cpp
 
+OBJ := $(addprefix $(OBJDIR)/, $(SRC:.cpp=.o))
 OBJ_BACK_END := $(addprefix $(OBJDIR_BACK_END)/, $(SRC_BACK_END:.cpp=.o))
 OBJ_FRONT_END := $(addprefix $(OBJDIR_FRONT_END)/, $(SRC_FRONT_END:.cpp=.o))
 OBJ_TREE := $(addprefix $(OBJDIR_TREE)/, $(SRC_TREE:.cpp=.o))
@@ -55,17 +59,17 @@ CXXFLAGS := -O3 -g -std=c++14 -fmax-errors=100 -Wall -Wextra                  \
 all: out run
 
 run:
-	printf "%s\n" "Assembling..."
-	./$(BACK_END) test.txt
 	printf "%s\n" "Running..."
-	./$(FRONT_END) test.mur
+	./$(TEST)
 	printf "%s\n" "Finished."
 
-out: $(OBJDIR) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
+out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
 	printf "%s\n" "Linking..."
-	$(CXX) $(OBJ_BACK_END) -o $(BACK_END) $(CXXFLAGS)
-	$(CXX) $(OBJ_FRONT_END) -o $(FRONT_END) $(CXXFLAGS)
-	$(CXX) $(OBJ_TREE) -o $(TREE) $(CXXFLAGS)
+	$(CXX) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ) -o $(TEST) $(CXXFLAGS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	printf "%s\n" "Compiling $@..."
+	$(CXX) -c $^ -o  $@ $(CXXFLAGS)
 
 $(OBJDIR_BACK_END)/%.o: $(SRCDIR_BACK_END)/%.cpp
 	printf "%s\n" "Compiling $@..."
@@ -94,8 +98,5 @@ clean:
 distclean:
 	printf "%s\n" "Removing built files..."
 	rm -rf $(OBJDIR)
-	rm $(BACK_END)
-	rm $(FRONT_END)
-	rm $(OBJDIR_TREE)
 	printf "%s\n" "Done."
 
