@@ -8,7 +8,7 @@
 #include "../log.h"
 
 static int
-get_word(char **word, char *start, int n)
+get_word(char **word, char *start, size_t n)
 {
         char *tmp = (char *) calloc(n + 1, sizeof(char));
 
@@ -87,7 +87,7 @@ lex_alloc(tok_arr_t *arr, int cap)
 }
 
 int
-lexer(char *buffer, int size, tok_arr_t *arr)
+lexer(char *buffer, tok_arr_t *arr)
 {
         assert(buffer);
         assert(arr);
@@ -97,8 +97,6 @@ lexer(char *buffer, int size, tok_arr_t *arr)
         if ((err = lex_alloc(arr, 200)) != LEX_NO_ERR)
                 return err;
 
-        int i = 0;
-        ssize_t lex_ret = 0;
         int tok_count = 0;
         char *word = nullptr;
         while (*(buffer + 1)) {
@@ -110,8 +108,8 @@ lexer(char *buffer, int size, tok_arr_t *arr)
                 if (buffer == new_buffer)
                         new_buffer++;
 
-                if (get_word(&word, buffer, 
-                                new_buffer - buffer) == LEX_ALLOC) {
+                if (get_word(&word, buffer, (size_t) (new_buffer - buffer)) 
+                                                                == LEX_ALLOC) {
                         return LEX_ALLOC;
                 }
 

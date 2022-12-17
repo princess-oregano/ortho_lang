@@ -14,7 +14,7 @@ OBJDIR_BACK_END := $(addprefix $(OBJDIR)/, $(BACK_END))
 OBJDIR_FRONT_END := $(addprefix $(OBJDIR)/, $(FRONT_END))
 OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 
-SRC := main.cpp file.cpp log.cpp
+SRC := main.cpp args.cpp file.cpp log.cpp
 SRC_BACK_END := 
 SRC_FRONT_END := lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp
@@ -60,7 +60,7 @@ all: out run
 
 run:
 	printf "%s\n" "Running..."
-	./$(TEST)
+	./$(TEST) test.txt
 	printf "%s\n" "Finished."
 
 out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)

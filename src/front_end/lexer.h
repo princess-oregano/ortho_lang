@@ -24,7 +24,7 @@ struct tok_arr_t {
 
 // Builds an array of tokens.
 int
-lexer(char *buffer, int size, tok_arr_t *arr);
+lexer(char *buffer, tok_arr_t *arr);
 
 #endif // LEXER_H
 
