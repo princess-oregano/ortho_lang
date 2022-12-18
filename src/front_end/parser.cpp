@@ -125,8 +125,70 @@ parser(tok_arr_t *arr, tree_t *ast)
         return PAR_NO_ERR;
 }
 
+static void
+print_node(tree_t *tree, int pos, FILE *stream, int level)
+{
+        log("Entering %s.\n", __PRETTY_FUNCTION__);
+
+        assert(tree);
+        assert(stream);
+
+        if (pos < 0)
+                return;
+
+        for (int i = 0; i < level; i++)
+                fprintf(stream, "        ");
+
+        level++;
+
+        fprintf(stream, "{\'%d\'", tree->nodes[pos].data.type);
+
+        switch (tree->nodes[pos].data.type) {
+                case TOK_POISON:
+                        assert(0 && "Error: Poison node encountered.\n");
+                        break;
+                case TOK_VAR:
+                        fprintf(stream, " \'%s\'", tree->nodes[pos].data.val.var);
+                        break;
+                case TOK_NUM:
+                        fprintf(stream, " \'%lg\'", tree->nodes[pos].data.val.num);
+                        break;
+                case TOK_OP:
+                        fprintf(stream, " \'%d\'", tree->nodes[pos].data.val.op);
+                        break;
+                case TOK_KWORD:
+                        assert(0 && "Keywords are not supported yet.\n");
+                        break;
+                case TOK_PUNC:
+                        assert(0 && "Punctuators should not be in AST.\n");
+                default: 
+                        assert(0 && "Invalid token type.\n");
+                        break;
+        }
+
+        if (tree->nodes[pos].left  == -1 &&
+            tree->nodes[pos].right == -1) {
+                fprintf(stream, "}\n");
+        } else {
+                fprintf(stream, "\n");
+                print_node(tree, tree->nodes[pos].left,  stream, level);
+                print_node(tree, tree->nodes[pos].right, stream, level);
+                for (int i = 0; i < level - 1; i++)
+                        fprintf(stream, "        ");
+                fprintf(stream, "}\n");
+        }
+
+        log("Exiting %s.\n", __PRETTY_FUNCTION__);
+}
+
 int
 par_write_ast(tree_t *ast, FILE *stream)
 {
+        setvbuf(stream, nullptr, _IONBF, 0);
+
+        print_node(ast, ast->root, stream, 0);
+
+        fclose(stream);
+       
         return PAR_NO_ERR;
 }

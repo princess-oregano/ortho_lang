@@ -11,15 +11,15 @@ int
 main(int argc, char *argv[])
 {
         open_log("log.html");
-        file_t file {};
+        file_t src_file {};
 
         params_t params {};
         process_args(argc, argv, &params);
 
-        get_file(params.filename.src_code, &file, "r");
+        get_file(params.filename.src_code, &src_file, "r");
 
         char *buffer = nullptr;
-        read_file(&buffer, &file);
+        read_file(&buffer, &src_file);
 
         tok_arr_t tok_arr {};
         lexer(buffer, &tok_arr);
@@ -27,6 +27,10 @@ main(int argc, char *argv[])
         tree_t ast {};
         tree_ctor(&ast, 200);
         parser(&tok_arr, &ast);
+
+        file_t ast_file {};
+        get_file(params.filename.ast_code, &ast_file, "w");
+        par_write_ast(&ast, ast_file.stream);
 
         free(tok_arr.tok);
         clean_args(&params);

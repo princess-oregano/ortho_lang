@@ -30,7 +30,7 @@ enum tok_type_t {
 
 // Union with object
 union value_t {
-        punc_t punc;             // Punctuator.
+        punc_t punc;           // Punctuator.
         char *var;             // Variable. Later extend this.
         double num;            // Number value.
         op_t op;               // Operation.
