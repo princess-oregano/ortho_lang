@@ -103,5 +103,9 @@ clean:
 distclean:
 	printf "%s\n" "Removing built files..."
 	rm -rf $(OBJDIR)
+	rm -rf dmp
+	rm log.html
+	rm $(TEST_AST)
+	rm $(TEST_GEN)
 	printf "%s\n" "Done."
 
