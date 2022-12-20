@@ -32,16 +32,17 @@ get_delim_buf(char **line, int delim, char *buffer)
 static void
 gen_write_asm(tree_t *ast, FILE *stream)
 {
-
+        
 }
 
 // Restores node from description from the buffer.
 static void
-gen_restore(tree_t *tree, char *buffer, int *pos)
+gen_restore(tree_t *tree, char *buf, int *pos)
 {
         assert(tree);
-        assert(buffer);
+        assert(buf);
 
+        static char *buffer = buf;
         char *type = nullptr;
         char *val = nullptr;
         char ch = '\0';
