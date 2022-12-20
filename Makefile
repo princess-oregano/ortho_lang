@@ -2,7 +2,8 @@ BACK_END := back_end
 FRONT_END := front_end
 TREE := tree
 
-TEST := test
+TEST_AST := ast
+TEST_GEN := gen
 
 SRCDIR = src
 OBJDIR = obj
@@ -14,9 +15,9 @@ OBJDIR_BACK_END := $(addprefix $(OBJDIR)/, $(BACK_END))
 OBJDIR_FRONT_END := $(addprefix $(OBJDIR)/, $(FRONT_END))
 OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 
-SRC := main.cpp args.cpp file.cpp log.cpp
-SRC_BACK_END := 
-SRC_FRONT_END := lexer.cpp parser.cpp
+SRC := args.cpp file.cpp log.cpp
+SRC_BACK_END := main.cpp generator.cpp
+SRC_FRONT_END := main.cpp lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp
 
 OBJ := $(addprefix $(OBJDIR)/, $(SRC:.cpp=.o))
@@ -60,12 +61,16 @@ all: out run
 
 run:
 	printf "%s\n" "Running..."
-	./$(TEST) test.txt
+	printf "%s\n" "Building AST..."
+	./$(TEST_AST) test.txt
+	printf "%s\n" "Generating ASM..."
+	./$(TEST_GEN) test.ast
 	printf "%s\n" "Finished."
 
 out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
 	printf "%s\n" "Linking..."
-	$(CXX) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ) -o $(TEST) $(CXXFLAGS)
+	$(CXX) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ) -o $(TEST_AST) $(CXXFLAGS)
+	$(CXX) $(OBJ_BACK_END) $(OBJ_TREE) $(OBJ) -o $(TEST_GEN) $(CXXFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	printf "%s\n" "Compiling $@..."

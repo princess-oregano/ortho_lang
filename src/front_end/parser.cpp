@@ -188,7 +188,5 @@ par_write_ast(tree_t *ast, FILE *stream)
 
         print_node(ast, ast->root, stream, 0);
 
-        fclose(stream);
-       
         return PAR_NO_ERR;
 }

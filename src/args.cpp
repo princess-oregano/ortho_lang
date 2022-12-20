@@ -42,7 +42,7 @@ process_args(int argc, char *argv[], params_t *params)
 
         params->filename.src_code = argv[1];
         change_ext(params->filename.src_code, &params->filename.ast_code, AST_EXT);
-        change_ext(params->filename.src_code, &params->filename.asm_code, AST_EXT);
+        change_ext(params->filename.src_code, &params->filename.asm_code, ASM_EXT);
 
         return ARG_NO_ERR;
 }
