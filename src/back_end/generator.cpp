@@ -28,11 +28,56 @@ get_delim_buf(char **line, int delim, char *buffer)
         return (int) count;
 }
 
+static void
+gen_op(op_t op, FILE *stream)
+{
+        switch(op) {
+                case OP_ADD:
+                        fprintf(stream, "add\n");
+                        break;
+                case OP_SUB:
+                        fprintf(stream, "sub\n");
+                        break;
+                case OP_MUL:
+                        fprintf(stream, "mul\n");
+                        break;
+                case OP_DIV:
+                        fprintf(stream, "div\n");
+                        break;
+                default:
+                        assert(0 && "Invalid operation type.");
+        }
+}
+
 // Generates ASM code from AST.
 static void
-gen_write_asm(tree_t *ast, FILE *stream)
+gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
-        
+        switch (ast->nodes[*pos].data.type) {
+                case TOK_POISON:
+                        assert(0 && "Poison node encountered.");
+                        break;
+                case TOK_VAR:
+                        assert(0 && "Variables are not supported yet.");
+                        break;
+                case TOK_NUM:
+                        fprintf(stream, "push %lg\n", ast->nodes[*pos].data.val.num);
+                        break;
+                case TOK_OP:
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        gen_op(ast->nodes[*pos].data.val.op, stream);
+                        break;
+                case TOK_KWORD:
+                        assert(0 && "Keywords are not supported yet.");
+                        break;
+                case TOK_PUNC:
+                        assert(0 && "Punctuator encountered.");
+                        break;
+                default:
+                        assert(0 && "Invalid type encountered.");
+                        break;
+        }
 }
 
 // Restores node from description from the buffer.
@@ -45,7 +90,6 @@ gen_restore(tree_t *tree, char *buf, int *pos)
         static char *buffer = buf;
         char *type = nullptr;
         char *val = nullptr;
-        char ch = '\0';
         int i = 0;
 
         for ( ; isspace(*buffer); buffer++)
@@ -74,8 +118,8 @@ gen_restore(tree_t *tree, char *buf, int *pos)
                 }
 
                 buffer++;
-                i += get_delim_buf(&val, '\'', buffer) + 1;
-                buffer += i;
+                i += get_delim_buf(&val, '\'', buffer);
+                buffer += i - 1;
 
                 tree_data_t data {};
                 data.type = (tok_type_t) atoi(type);
@@ -114,7 +158,7 @@ gen_restore(tree_t *tree, char *buf, int *pos)
                 for ( ; isspace(*buffer); buffer++)
                         ;
 
-                if (ch == '}') {
+                if (*buffer == '}') {
                         buffer++;
                         return;
                 }
@@ -130,7 +174,8 @@ generator(char *ast_buffer, FILE *asm_stream)
         gen_restore(&ast, ast_buffer, &ast.root);
         include_graph(tree_graph_dump(&ast, VAR_INFO(ast)));
 
-        gen_write_asm(&ast, asm_stream);
+        gen_write_asm(&ast, &ast.root, asm_stream);
+        fprintf(asm_stream, "out\nhlt\n\n");
         
         tree_dtor(&ast);
         return GEN_NO_ERR;

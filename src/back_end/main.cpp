@@ -10,7 +10,7 @@
 int
 main(int argc, char *argv[])
 {
-        open_log("log.html");
+        open_log("log1.html");
 
         // Process cmd-line arguments.
         params_t params {};

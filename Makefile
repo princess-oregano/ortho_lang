@@ -64,7 +64,11 @@ run:
 	printf "%s\n" "Building AST..."
 	./$(TEST_AST) test.txt
 	printf "%s\n" "Generating ASM..."
-	#./$(TEST_GEN) test.ast
+	./$(TEST_GEN) test.ast
+	printf "%s\n" "Running ASM..."
+	./asm test.asm
+	printf "%s\n" "Running CPU..."
+	./cpu test.ast
 	printf "%s\n" "Finished."
 
 out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
