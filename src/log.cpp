@@ -60,9 +60,9 @@ print_end_log()
 }
 
 void
-open_log(const char *filename)
+open_log(const char *filename, const char *mode)
 {
-        LOGSTREAM = fopen(filename, "w");
+        LOGSTREAM = fopen(filename, mode);
         setvbuf(LOGSTREAM, nullptr, _IONBF, 0);
 
         if (LOGSTREAM == nullptr) {

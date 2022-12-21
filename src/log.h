@@ -5,7 +5,7 @@
 
 // Open log file.
 void
-open_log(const char *filename);
+open_log(const char *filename, const char *mode);
 // Write message to log.
 void
 log(const char *format, ...);
