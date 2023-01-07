@@ -2,19 +2,32 @@ GRAMMAR RULES OF ORTHOLANG
 
 VAR -- variable
 NUM -- number
+INT -- declaration operator
 
-general := brace_expr ;
+general := 
+        declaration_expr expression
 
 primary_expr := 
-        NUM
+          NUM 
+        | VAR
 
 add_expr := 
-        mul_expr {[+-] mul_expr}*
+          mul_expr {['+' '-'] mul_expr}*
 
 mul_expr :=
-        brace_expr {[*/] brace_expr}*
+          brace_expr {['*' '/'] brace_expr}*
 
 brace_expr :=
-        (add_expr) | primary_expr
+          '(' add_expr ')' 
+        | primary_expr
 
+expression :=
+          assign_expr ';'
+
+declaration_expr := 
+          INT VAR ';'
+
+assign_expr := 
+          add_expr
+        | VAR '=' assign_expr
 
