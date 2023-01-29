@@ -6,6 +6,7 @@
 #include <assert.h>
 #include "lexer.h"
 #include "../log.h"
+#include "types.h"
 
 static int
 get_word(char **word, char *start, size_t n)
@@ -56,9 +57,17 @@ lex_token(token_t *token, char *str)
         }else if (strcmp(str, "/") == 0) {
                 token->type = TOK_OP;
                 token->val.op = OP_DIV;
+        } else if (strcmp(str, "=") == 0) {
+                token->type = TOK_OP;
+                token->val.op = OP_ASSIGN;
+        } else if (strcmp(str, "int") == 0) {
+                token->type = TOK_DECL;
+        } else if (strcmp(str, "#") == 0) {
+                token->type = TOK_EOF;
         } else {
-                log("Error: Invalid command '%s'", str);
-                return LEX_INV_USG;
+                log("Unknown command: '%s'. Treated as variable.\n", str);
+                token->type = TOK_VAR;
+                token->val.var = str;
         }
 
         return LEX_NO_ERR;
@@ -114,14 +123,18 @@ lexer(char *buffer, tok_arr_t *arr)
                 }
 
                 lex_token(&arr->tok[tok_count], word);
-                free(word);
+                if (arr->tok[tok_count].type != TOK_VAR)
+                        free(word);
+
+                fprintf(stderr, "%d %d\n", arr->tok[tok_count].type, arr->tok[tok_count].val.op);
+
                 tok_count++;
 
                 buffer = new_buffer;
 
                 if (arr->cap < tok_count + 1) {
                         if ((err = lex_alloc(arr, arr->cap * 2)) !=
-                                        LEX_NO_ERR)
+                                                LEX_NO_ERR)
                                 return err;
                 }
         }

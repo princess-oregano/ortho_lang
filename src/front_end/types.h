@@ -12,20 +12,23 @@ enum punc_t {
 
 // Enum of available operations.
 enum op_t {
-        OP_ADD = 1,
-        OP_SUB = 2,
-        OP_MUL = 3,
-        OP_DIV = 4,
+        OP_ADD    = 1,
+        OP_SUB    = 2,
+        OP_MUL    = 3,
+        OP_DIV    = 4,
+        OP_ASSIGN = 5,
 };
 
 // Enum of available objects that can be differentiated.
 enum tok_type_t {
         TOK_POISON = 0, // Empty token.
-        TOK_VAR    = 1, // Variable.
-        TOK_NUM    = 2, // Number.
-        TOK_OP     = 3, // Operation.
+        TOK_DECL   = 1, // Declaration operator.
+        TOK_VAR    = 2, // Variable.
+        TOK_NUM    = 3, // Number.
+        TOK_OP     = 4, // Operation.
         TOK_KWORD  = 5, // Keyword.
         TOK_PUNC   = 6, // Punctuator.
+        TOK_EOF    = 7, // End of file.
 };
 
 // Union with object

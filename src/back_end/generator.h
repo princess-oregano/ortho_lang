@@ -5,6 +5,8 @@
 
 enum gen_err_t {
         GEN_NO_ERR = 0,
+        GEN_VAR_DECL = 1,
+        GEN_UNDECL = 2,
 };
 
 int

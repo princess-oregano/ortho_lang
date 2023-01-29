@@ -73,6 +73,11 @@ op_node_graph_dump(tree_t *tree, int curr, int node_count)
                                 "node%d [label = \"%d\\n/\", shape = rect]\n",
                                 node_count, curr);
                         break;
+                case OP_ASSIGN:
+                        fprintf(DMP_STREAM,
+                                "node%d [label = \"%d\\n=\", shape = rect]\n",
+                                node_count, curr);
+                        break;
                 default:
                         log("Invalid type encountered: %d.\n", 
                                         tree->nodes[curr].data.val.op);
@@ -99,6 +104,11 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
                                 "node%d [label = \"%d\\nVoid.\", shape = rect]\n",
                                 node_count, curr);
                         break;
+                case TOK_DECL:
+                        fprintf(DMP_STREAM,
+                                "node%d [label = \"%d\\nVAR\", shape = rect]\n",
+                                node_count, curr);
+                        break;
                 case TOK_VAR:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\n%s\", shape = rect]\n",
@@ -112,6 +122,8 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
                 case TOK_OP:
                         op_node_graph_dump(tree, curr, node_count);
                         break;
+                case TOK_KWORD:
+                case TOK_EOF:
                 default:
                         log("Invalid type encountered: type = %d.\n",
                                         tree->nodes[curr].data.type);
