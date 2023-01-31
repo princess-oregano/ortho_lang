@@ -29,6 +29,7 @@ enum tok_type_t {
         TOK_KWORD  = 5, // Keyword.
         TOK_PUNC   = 6, // Punctuator.
         TOK_EOF    = 7, // End of file.
+        TOK_EXP = 666,
 };
 
 // Union with object

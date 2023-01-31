@@ -9,6 +9,7 @@
 #define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == OP_##NAME)
 #define IS_PUNC(NAME) (TOK.type == TOK_PUNC && TOK.val.punc == (PUNC_##NAME))
 #define INSERT node_insert(ast, pos, {.type = TOK.type, .val = TOK.val})
+#define INS_EXP node_insert(ast, pos, {.type = TOK_EXP, .val = {}})
 
 static int
 general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
@@ -175,18 +176,15 @@ declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 log("Error: Expected variable.\n"); 
                 return PAR_EXP_VAR;
         }
-        int tmp = *pos;
-        *pos = ast->nodes[tmp].right;
-        INSERT;
-        (*t_count)++;
-
-        *pos = ast->nodes[tmp].left;
+        primary_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+        node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_POISON, .val = {}});
 
         if (!IS_PUNC(COLON)) {
                 log("Error: Expected end of statement ';'.\n");
                 return PAR_EXP_COLON;
         }
         (*t_count)++;
+
 
         return PAR_NO_ERR;
 }
@@ -200,12 +198,21 @@ general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(*t_count < arr->cap);
 
         while (TOK.type != TOK_EOF) {
+                INS_EXP;
+                int tmp = *pos;
+                fprintf(stderr, "pos = %d\n", *pos);
                 if (TOK.type == TOK_DECL) {
-                        declaration(arr, t_count, ast, pos);
+                        fprintf(stderr, "declaration\n");
+                        declaration(arr, t_count, ast, &ast->nodes[tmp].right);
                 } else {
-                        expression(arr, t_count, ast, pos);
+                        fprintf(stderr, "expression\n");
+                        expression(arr, t_count, ast, &ast->nodes[tmp].right);
                 }
+                include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
+                pos = &ast->nodes[tmp].left;
+                fprintf(stderr, "pos = %d\n", *pos);
         }
+        node_insert(ast, pos, {.type = TOK_POISON, .val = {}});
         (*t_count)++;
 
         return PAR_NO_ERR;
@@ -219,7 +226,6 @@ parser(tok_arr_t *arr, tree_t *ast)
 
         int t_count = 0;
         general(arr, &t_count, ast, &ast->root); 
-        fprintf(stderr, "%d %lg\n", ast->nodes[ast->root].data.type, ast->nodes[ast->root].data.val.num);
         include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
 
         return PAR_NO_ERR;
@@ -243,10 +249,13 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
 
         switch (tree->nodes[pos].data.type) {
                 case TOK_POISON:
-                        assert(0 && "Error: Poison node encountered.\n");
+                        fprintf(stream, " \'VOID\'");
                         break;
-                case TOK_DECL: 
-                        fprintf(stream, " \'VAR\'");
+                case TOK_EXP:
+                        fprintf(stream, " \'EXP\'");
+                        break;
+                case TOK_DECL:
+                        fprintf(stream, " \'DECL\'");
                         break;
                 case TOK_VAR:
                         fprintf(stream, " \'%s\'", tree->nodes[pos].data.val.var);

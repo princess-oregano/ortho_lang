@@ -29,7 +29,7 @@ main(int argc, char *argv[])
 
         // Build AST from tokens.
         tree_t ast {};
-        tree_ctor(&ast, 200);
+        tree_ctor(&ast, 300);
         parser(&tok_arr, &ast);
 
         // Write AST to file.
