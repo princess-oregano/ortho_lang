@@ -2,6 +2,7 @@
 #define LEXER_H
 
 #include "types.h"
+#include "../identifiers.h"
 
 const char* const BREAKSET = " ;+-*/()\n\t\0";
 
@@ -24,7 +25,7 @@ struct tok_arr_t {
 
 // Builds an array of tokens.
 int
-lexer(char *buffer, tok_arr_t *arr);
+lexer(char *buffer, tok_arr_t *arr, iden_t *id);
 
 #endif // LEXER_H
 

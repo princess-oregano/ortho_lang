@@ -96,7 +96,7 @@ lex_alloc(tok_arr_t *arr, int cap)
 }
 
 int
-lexer(char *buffer, tok_arr_t *arr)
+lexer(char *buffer, tok_arr_t *arr, iden_t *id)
 {
         assert(buffer);
         assert(arr);
@@ -104,6 +104,9 @@ lexer(char *buffer, tok_arr_t *arr)
         int err = 0;
 
         if ((err = lex_alloc(arr, 200)) != LEX_NO_ERR)
+                return err;
+        
+        if ((err = id_alloc(id, 200)) != LEX_NO_ERR)
                 return err;
 
         int tok_count = 0;
@@ -123,10 +126,18 @@ lexer(char *buffer, tok_arr_t *arr)
                 }
 
                 lex_token(&arr->tok[tok_count], word);
-                if (arr->tok[tok_count].type != TOK_VAR)
-                        free(word);
 
-                fprintf(stderr, "%d %d\n", arr->tok[tok_count].type, arr->tok[tok_count].val.op);
+                if (arr->tok[tok_count].type != TOK_VAR) {
+                        free(word);
+                } else {
+                        id->ptrs[id->size] = word;
+                        id->size++;
+                        if (id->cap < id->size + 1) {
+                                if ((err = id_alloc(id, id->cap * 2)) !=
+                                                        LEX_NO_ERR)
+                                        return err;
+                        }
+                }
 
                 tok_count++;
 
@@ -141,3 +152,4 @@ lexer(char *buffer, tok_arr_t *arr)
 
         return LEX_NO_ERR;
 }
+

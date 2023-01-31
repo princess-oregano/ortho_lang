@@ -127,8 +127,12 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
                 case TOK_OP:
                         op_node_graph_dump(tree, curr, node_count);
                         break;
-                case TOK_KWORD:
                 case TOK_EOF:
+                        fprintf(DMP_STREAM,
+                                "node%d [label = \"%d\\nEOF\", shape = rect]\n",
+                                node_count, curr);
+                        break;
+                case TOK_KWORD:
                 default:
                         log("Invalid type encountered: type = %d.\n",
                                         tree->nodes[curr].data.type);

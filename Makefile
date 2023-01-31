@@ -15,7 +15,7 @@ OBJDIR_BACK_END := $(addprefix $(OBJDIR)/, $(BACK_END))
 OBJDIR_FRONT_END := $(addprefix $(OBJDIR)/, $(FRONT_END))
 OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 
-SRC := args.cpp file.cpp log.cpp
+SRC := args.cpp file.cpp log.cpp identifiers.cpp
 SRC_BACK_END := main.cpp generator.cpp table.cpp
 SRC_FRONT_END := main.cpp lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp

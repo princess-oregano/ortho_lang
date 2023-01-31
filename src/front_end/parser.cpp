@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include "parser.h"
 #include "../tree/tree.h"
@@ -23,9 +24,9 @@ static int
 add_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 assign_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
-static int 
+static int
 expression(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
-static int 
+static int
 declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 
 static int
@@ -80,7 +81,7 @@ mul_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 
         brace_expr(arr, t_count, ast, pos);
         while (IS_OP(DIV) || IS_OP(MUL)) {
-                int tmp = *pos; 
+                int tmp = *pos;
                 INSERT;
                 node_bound(&ast->nodes[*pos].left, tmp);
                 (*t_count)++;
@@ -97,10 +98,10 @@ add_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(t_count);
         assert(ast);
         assert(*t_count < arr->cap);
-        
+
         mul_expr(arr, t_count, ast, pos);
         while (IS_OP(ADD) || IS_OP(SUB)) {
-                int tmp = *pos; 
+                int tmp = *pos;
                 INSERT;
                 node_bound(&ast->nodes[*pos].left, tmp);
                 (*t_count)++;
@@ -117,21 +118,21 @@ assign_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(t_count);
         assert(ast);
         assert(*t_count < arr->cap);
-        
-        if (TOK.type == TOK_VAR) {
-                int tmp = *pos;
-                INSERT;
-                node_bound(&ast->nodes[*pos].left, tmp);
-                (*t_count)++;
 
+        if (TOK.type == TOK_VAR) {
+                (*t_count)++;
                 if (!IS_OP(ASSIGN)) {
                         log("Expected expression.\n");
                         return PAR_EXP_EXPR;
                 }
                 INSERT;
+
+                (*t_count)--;
+                node_insert(ast, &ast->nodes[*pos].left, {.type = TOK.type, .val = TOK.val});
+                (*t_count)++;
                 (*t_count)++;
 
-                assign_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+                add_expr(arr, t_count, ast, &ast->nodes[*pos].right);
         } else {
                 add_expr(arr, t_count, ast, pos);
         }
@@ -139,14 +140,14 @@ assign_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         return PAR_NO_ERR;
 }
 
-static int 
+static int
 expression(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 {
         assert(arr);
         assert(t_count);
         assert(ast);
         assert(*t_count < arr->cap);
-        
+
         assign_expr(arr, t_count, ast, pos);
         if (!IS_PUNC(COLON)) {
                 log("Error: Expected end of statement ';'.\n");
@@ -157,7 +158,7 @@ expression(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         return PAR_NO_ERR;
 }
 
-static int 
+static int
 declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 {
         assert(arr);
@@ -173,7 +174,7 @@ declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         (*t_count)++;
 
         if (TOK.type != TOK_VAR) {
-                log("Error: Expected variable.\n"); 
+                log("Error: Expected variable.\n");
                 return PAR_EXP_VAR;
         }
         primary_expr(arr, t_count, ast, &ast->nodes[*pos].right);
@@ -200,19 +201,15 @@ general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         while (TOK.type != TOK_EOF) {
                 INS_EXP;
                 int tmp = *pos;
-                fprintf(stderr, "pos = %d\n", *pos);
                 if (TOK.type == TOK_DECL) {
-                        fprintf(stderr, "declaration\n");
                         declaration(arr, t_count, ast, &ast->nodes[tmp].right);
                 } else {
-                        fprintf(stderr, "expression\n");
                         expression(arr, t_count, ast, &ast->nodes[tmp].right);
                 }
                 include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
                 pos = &ast->nodes[tmp].left;
-                fprintf(stderr, "pos = %d\n", *pos);
         }
-        node_insert(ast, pos, {.type = TOK_POISON, .val = {}});
+        INSERT;
         (*t_count)++;
 
         return PAR_NO_ERR;
@@ -225,7 +222,7 @@ parser(tok_arr_t *arr, tree_t *ast)
         assert(ast);
 
         int t_count = 0;
-        general(arr, &t_count, ast, &ast->root); 
+        general(arr, &t_count, ast, &ast->root);
         include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
 
         return PAR_NO_ERR;
@@ -273,7 +270,9 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
                         assert(0 && "Punctuators should not be in AST.\n");
                         break;
                 case TOK_EOF:
-                default: 
+                        fprintf(stream, " \'EOF\'");
+                        break;
+                default:
                         assert(0 && "Invalid token type.\n");
                         break;
         }

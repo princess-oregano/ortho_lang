@@ -23,9 +23,10 @@ main(int argc, char *argv[])
         get_file(params.filename.src_code, &src_file, "r");
         read_file(&buffer, &src_file);
 
-        // Make tokens of source code.
+        // Make tokens of source code. Also save all pointers to identifiers.
+        iden_t id {};
         tok_arr_t tok_arr {};
-        lexer(buffer, &tok_arr);
+        lexer(buffer, &tok_arr, &id);
 
         // Build AST from tokens.
         tree_t ast {};
@@ -39,6 +40,7 @@ main(int argc, char *argv[])
         fclose(ast_file.stream);
 
         // Clean-up.
+        id_free(&id);
         free(tok_arr.tok);
         clean_args(&params);
         tree_dtor(&ast);
