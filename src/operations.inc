@@ -1,0 +1,12 @@
+DEF_OP(ADD, "+")
+DEF_OP(SUB, "-")
+DEF_OP(MUL, "*")
+DEF_OP(DIV, "/")
+DEF_OP(ASSIGN, "=")
+DEF_OP(LEQ, "<=")
+DEF_OP(GEQ, ">=")
+DEF_OP(LESSER, "<")
+DEF_OP(GREATER, ">")
+DEF_OP(EQ, "==")
+DEF_OP(NEQ, "!=")
+
