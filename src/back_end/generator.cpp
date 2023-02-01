@@ -36,9 +36,24 @@ get_delim_buf(char **line, int delim, char *buffer)
 }
 
 static void
-gen_op(op_t op, FILE *stream)
+gen_assign(tree_t *ast, int *pos, FILE *stream)
 {
-        switch(op) {
+        int tmp = ast->nodes[*pos].left;
+
+        int table_num = sym_find(ast->nodes[tmp].data.val.var, &table);
+        int offset = table.vars[table_num].ram;
+
+        fprintf(stream, "pop [rax + %d]\n", offset);
+}
+
+static void
+gen_op(tree_t *ast, int *pos, FILE *stream)
+{
+        if (ast->nodes[*pos].data.val.op != OP_ASSIGN)
+                gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+        
+        switch(ast->nodes[*pos].data.val.op) {
                 case OP_ADD:
                         fprintf(stream, "add\n");
                         break;
@@ -52,8 +67,29 @@ gen_op(op_t op, FILE *stream)
                         fprintf(stream, "div\n");
                         break;
                 case OP_ASSIGN:
+                        gen_assign(ast, pos, stream);
+                        break;
+                case OP_EQ:
+                        fprintf(stream, "eq\n");
+                        break;
+                case OP_NEQ:
+                        fprintf(stream, "neq\n");
+                        break;
+                case OP_LEQ:
+                        fprintf(stream, "leq\n");
+                        break;
+                case OP_GEQ:
+                        fprintf(stream, "geq\n");
+                        break;
+                case OP_LESSER:
+                        fprintf(stream, "lsr\n");
+                        break;
+                case OP_GREATER:
+                        fprintf(stream, "gtr\n");
+                        break;
                 default:
                         assert(0 && "Invalid operation type.");
+                        break;
         }
 }
 
@@ -74,18 +110,6 @@ gen_declare(tree_t *ast, int *pos)
         return GEN_NO_ERR;
 }
 
-static void
-gen_assign(tree_t *ast, int *pos, FILE *stream)
-{
-        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-        int tmp = ast->nodes[*pos].left;
-
-        int table_num = sym_find(ast->nodes[tmp].data.val.var, &table);
-        int offset = table.vars[table_num].ram;
-
-        fprintf(stream, "pop [rax + %d]\n", offset);
-}
-
 static int
 gen_variable(tree_t *ast, int *pos, FILE *stream)
 {
@@ -94,6 +118,7 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
                 log("Error: Undeclared variable.\n");
                 return GEN_UNDECL;
         }
+
         int offset = table.vars[table_num].ram;
         fprintf(stream, "push [rax + %d]\n", offset);
 
@@ -116,20 +141,14 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                                 return GEN_VAR_DECL;
                         break;
                 case TOK_VAR:
-                        if (gen_variable(ast, pos, stream) == GEN_UNDECL)
+                        if (gen_variable(ast, pos, stream) != GEN_NO_ERR)
                                 return GEN_UNDECL;
                         break;
                 case TOK_NUM:
                         fprintf(stream, "push %lg\n", ast->nodes[*pos].data.val.num);
                         break;
                 case TOK_OP:
-                        if (ast->nodes[*pos].data.val.op == OP_ASSIGN) {
-                                gen_assign(ast, pos, stream);
-                        } else {
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        gen_op(ast->nodes[*pos].data.val.op, stream);
-                        }
+                        gen_op(ast, pos, stream);
                         break;
                 case TOK_KWORD:
                         assert(0 && "Keywords are not supported yet.");

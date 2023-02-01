@@ -11,13 +11,11 @@ enum punc_t {
 };
 
 // Enum of available operations.
+#define DEF_OP(NAME, SIGN) OP_##NAME,
 enum op_t {
-        OP_ADD    = 1,
-        OP_SUB    = 2,
-        OP_MUL    = 3,
-        OP_DIV    = 4,
-        OP_ASSIGN = 5,
+        #include "../operations.inc"
 };
+#undef DEF_OP
 
 // Enum of available objects that can be differentiated.
 enum tok_type_t {

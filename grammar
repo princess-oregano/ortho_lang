@@ -9,6 +9,8 @@ general :=              {declaration | expression}+
 primary_expr :=         NUM | 
                         VAR
 
+relational_expr :=      add_expr ['==' '!=' '<' '>' "<=" ">="] add_expr
+
 add_expr :=             mul_expr {['+' '-'] mul_expr}*
 
 mul_expr :=             brace_expr {['*' '/'] brace_expr}*
@@ -16,8 +18,8 @@ mul_expr :=             brace_expr {['*' '/'] brace_expr}*
 brace_expr :=           '(' add_expr ')' | 
                         primary_expr
 
-assign_expr :=          add_expr | 
-                        VAR '=' assign_expr
+assign_expr :=          relational_expr | 
+                        VAR '=' relational_expr
 
 expression :=           assign_expr ';'
 

@@ -25,6 +25,10 @@ get_word(char **word, char *start, size_t n)
         return LEX_NO_ERR;
 }
 
+#define DEF_OP(NAME, SIGN) if (strcmp(str, SIGN) == 0) { \
+                                token->type = TOK_OP;    \
+                                token->val.op = OP_##NAME;  \
+                           } else 
 static int
 lex_token(token_t *token, char *str)
 {
@@ -39,32 +43,19 @@ lex_token(token_t *token, char *str)
         if (strcmp(str, ";") == 0) {
                 token->type = TOK_PUNC;
                 token->val.punc = PUNC_COLON;
-        }else if (strcmp(str, "(") == 0) {
+        } else if (strcmp(str, "(") == 0) {
                 token->type = TOK_PUNC;
                 token->val.punc = PUNC_OPBRACE;
-        }else if (strcmp(str, ")") == 0) {
+        } else if (strcmp(str, ")") == 0) {
                 token->type = TOK_PUNC;
                 token->val.punc = PUNC_CLBRACE;
-        }else if (strcmp(str, "+") == 0) {
-                token->type = TOK_OP;
-                token->val.op = OP_ADD;
-        }else if (strcmp(str, "-") == 0) {
-                token->type = TOK_OP;
-                token->val.op = OP_SUB;
-        }else if (strcmp(str, "*") == 0) {
-                token->type = TOK_OP;
-                token->val.op = OP_MUL;
-        }else if (strcmp(str, "/") == 0) {
-                token->type = TOK_OP;
-                token->val.op = OP_DIV;
-        } else if (strcmp(str, "=") == 0) {
-                token->type = TOK_OP;
-                token->val.op = OP_ASSIGN;
         } else if (strcmp(str, "int") == 0) {
                 token->type = TOK_DECL;
         } else if (strcmp(str, "#") == 0) {
                 token->type = TOK_EOF;
-        } else {
+        } else
+        #include "../operations.inc"
+        {
                 log("Unknown command: '%s'. Treated as variable.\n", str);
                 token->type = TOK_VAR;
                 token->val.var = str;
@@ -72,6 +63,7 @@ lex_token(token_t *token, char *str)
 
         return LEX_NO_ERR;
 }
+#undef DEF_OP
 
 static int
 lex_alloc(tok_arr_t *arr, int cap)
@@ -148,6 +140,9 @@ lexer(char *buffer, tok_arr_t *arr, iden_t *id)
                                                 LEX_NO_ERR)
                                 return err;
                 }
+
+                while (isspace(*buffer))
+                        buffer++;
         }
 
         return LEX_NO_ERR;

@@ -49,35 +49,16 @@ generate_graph()
         return PNG_FILENAME;
 }
 
+#define DEF_OP(NAME, SIGN) case OP_##NAME: \
+                                fprintf(DMP_STREAM, \
+                                        "node%d [label = \"%d\\n%s\", shape = rect]\n", \
+                                        node_count, curr, SIGN); \
+                                break;
 static void
 op_node_graph_dump(tree_t *tree, int curr, int node_count)
 {
         switch (tree->nodes[curr].data.val.op) {
-                case OP_ADD:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n+\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_SUB:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n-\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_MUL:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n*\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_DIV:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n/\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case OP_ASSIGN:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n=\", shape = rect]\n",
-                                node_count, curr);
-                        break;
+                #include "../operations.inc"
                 default:
                         log("Invalid type encountered: %d.\n", 
                                         tree->nodes[curr].data.val.op);

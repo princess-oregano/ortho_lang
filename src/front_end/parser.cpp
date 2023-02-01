@@ -25,6 +25,8 @@ add_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 assign_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
+relational_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
 expression(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
@@ -119,22 +121,39 @@ assign_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        if (TOK.type == TOK_VAR) {
-                (*t_count)++;
-                if (!IS_OP(ASSIGN)) {
-                        log("Expected expression.\n");
-                        return PAR_EXP_EXPR;
-                }
+        (*t_count)++;
+        if (IS_OP(ASSIGN)) {
                 INSERT;
 
                 (*t_count)--;
                 node_insert(ast, &ast->nodes[*pos].left, {.type = TOK.type, .val = TOK.val});
-                (*t_count)++;
-                (*t_count)++;
+                (*t_count) += 2;
 
-                add_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+                relational_expr(arr, t_count, ast, &ast->nodes[*pos].right);
         } else {
-                add_expr(arr, t_count, ast, pos);
+                (*t_count)--;
+                relational_expr(arr, t_count, ast, pos);
+        }
+
+        return PAR_NO_ERR;
+}
+
+static int
+relational_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        add_expr(arr, t_count, ast, pos);
+        if (IS_OP(EQ) || IS_OP(NEQ) || IS_OP(LEQ) || IS_OP(GEQ)
+                                    || IS_OP(LESSER) || IS_OP(GREATER)) {
+                int tmp = *pos;
+                INSERT;
+                node_bound(&ast->nodes[*pos].left, tmp);
+                (*t_count)++;
+                add_expr(arr, t_count, ast, &ast->nodes[*pos].right);
         }
 
         return PAR_NO_ERR;

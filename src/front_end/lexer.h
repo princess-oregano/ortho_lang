@@ -10,7 +10,7 @@ enum lex_err {
         LEX_NO_ERR  = 0,
         LEX_ALLOC   = 1,
         LEX_BAD_CAP = 2,
-        LEX_INV_USG  = 3,
+        LEX_INV_USG = 3,
 };
 
 struct token_t {
