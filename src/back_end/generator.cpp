@@ -12,8 +12,10 @@
 #include "../file.h"
 #include "../log.h"
 
+static int LABEL_COUNT = 0;
 static int RAM_OFFSET = 0;
 static table_t table {};
+
 static int
 gen_write_asm(tree_t *ast, int *pos, FILE *stream);
 
@@ -43,7 +45,7 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
         int table_num = sym_find(ast->nodes[tmp].data.val.var, &table);
         int offset = table.vars[table_num].ram;
 
-        fprintf(stream, "pop [rax + %d]\n", offset);
+        fprintf(stream, "       pop [rax + %d]\n", offset);
 }
 
 static void
@@ -55,37 +57,37 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
         
         switch(ast->nodes[*pos].data.val.op) {
                 case OP_ADD:
-                        fprintf(stream, "add\n");
+                        fprintf(stream, "       add\n");
                         break;
                 case OP_SUB:
-                        fprintf(stream, "sub\n");
+                        fprintf(stream, "       sub\n");
                         break;
                 case OP_MUL:
-                        fprintf(stream, "mul\n");
+                        fprintf(stream, "       mul\n");
                         break;
                 case OP_DIV:
-                        fprintf(stream, "div\n");
+                        fprintf(stream, "       div\n");
                         break;
                 case OP_ASSIGN:
                         gen_assign(ast, pos, stream);
                         break;
                 case OP_EQ:
-                        fprintf(stream, "eq\n");
+                        fprintf(stream, "       eq\n");
                         break;
                 case OP_NEQ:
-                        fprintf(stream, "neq\n");
+                        fprintf(stream, "       neq\n");
                         break;
                 case OP_LEQ:
-                        fprintf(stream, "leq\n");
+                        fprintf(stream, "       geq\n");
                         break;
                 case OP_GEQ:
-                        fprintf(stream, "geq\n");
+                        fprintf(stream, "       leq\n");
                         break;
                 case OP_LESSER:
-                        fprintf(stream, "lsr\n");
+                        fprintf(stream, "       gtr\n");
                         break;
                 case OP_GREATER:
-                        fprintf(stream, "gtr\n");
+                        fprintf(stream, "       lsr\n");
                         break;
                 default:
                         assert(0 && "Invalid operation type.");
@@ -93,6 +95,35 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
         }
 }
 
+static void
+gen_kw(tree_t *ast, int *pos, FILE *stream)
+{
+        int label1 = LABEL_COUNT++;
+        int label2 = 0;
+        switch(ast->nodes[*pos].data.val.kw) {
+                case KW_WHILE:
+                        fprintf(stream, "L%d:\n", label1);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        label2 = LABEL_COUNT++;
+                        fprintf(stream, "       push 0\n"
+                                        "       je :L%d\n", label2);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "       jmp :L%d\n"
+                                        "L%d:\n", label1, label2);
+                        break;
+                case KW_IF:
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        fprintf(stream, "       push 0\n"
+                                        "       je :L%d\n"
+                                        "L%d:\n", label1, label1);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        break;
+                default:
+                        assert(0 && "Invalid keyword type.");
+                        break;
+        }
+}
+        
 static int
 gen_declare(tree_t *ast, int *pos)
 {
@@ -120,7 +151,7 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
         }
 
         int offset = table.vars[table_num].ram;
-        fprintf(stream, "push [rax + %d]\n", offset);
+        fprintf(stream, "       push [rax + %d]\n", offset);
 
         return GEN_NO_ERR;
 }
@@ -145,19 +176,20 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                                 return GEN_UNDECL;
                         break;
                 case TOK_NUM:
-                        fprintf(stream, "push %lg\n", ast->nodes[*pos].data.val.num);
+                        fprintf(stream, "       push %lg\n", ast->nodes[*pos].data.val.num);
                         break;
                 case TOK_OP:
                         gen_op(ast, pos, stream);
                         break;
-                case TOK_KWORD:
-                        assert(0 && "Keywords are not supported yet.");
+                case TOK_KW:
+                        gen_kw(ast, pos, stream);
                         break;
                 case TOK_PUNC:
                         assert(0 && "Punctuator encountered.");
                         break;
                 case TOK_EOF:
-                        fprintf(stream, "out\nhlt\n\n");
+                        fprintf(stream, "       out\n"
+                                        "       hlt\n\n");
                         break;
                 default:
                         assert(0 && "Invalid type encountered.");
@@ -226,8 +258,8 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                         case TOK_OP:
                                 data.val.op = (op_t) atoi(val);  
                                 break;
-                        case TOK_KWORD:
-                                assert(0 && "Keywords are not supported yet.\n");
+                        case TOK_KW:
+                                data.val.kw = (kword_t) atoi(val);  
                                 break;
                         case TOK_PUNC:
                                 assert(0 && "Punctuators should not be in AST.\n");

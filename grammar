@@ -25,3 +25,4 @@ expression :=           assign_expr ';'
 
 declaration :=          DECL VAR ';'
 
+iteration :=            WHILE '(' relarional_expr ')' expression

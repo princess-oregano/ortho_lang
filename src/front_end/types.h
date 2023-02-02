@@ -17,6 +17,13 @@ enum op_t {
 };
 #undef DEF_OP
 
+// Enum of available keywords.
+#define DEF_KW(NAME, SIGN) KW_##NAME,
+enum kword_t {
+        #include "../keywords.inc"
+};
+#undef DEF_KW
+
 // Enum of available objects that can be differentiated.
 enum tok_type_t {
         TOK_POISON = 0,   // Empty token.
@@ -24,7 +31,7 @@ enum tok_type_t {
         TOK_VAR    = 2,   // Variable.
         TOK_NUM    = 3,   // Number.
         TOK_OP     = 4,   // Operation.
-        TOK_KWORD  = 5,   // Keyword.
+        TOK_KW     = 5,   // Keyword.
         TOK_PUNC   = 6,   // Punctuator.
         TOK_EOF    = 7,   // End of file.
         TOK_EXP    = 666, // Expression token.
@@ -36,6 +43,7 @@ union value_t {
         char *var;             // Variable. Later extend this.
         double num;            // Number value.
         op_t op;               // Operation.
+        kword_t kw;            // Keyword.
 };
 
 #endif // TYPES_H

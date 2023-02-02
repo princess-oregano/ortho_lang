@@ -9,6 +9,7 @@
 #define TOK arr->tok[*t_count]
 #define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == OP_##NAME)
 #define IS_PUNC(NAME) (TOK.type == TOK_PUNC && TOK.val.punc == (PUNC_##NAME))
+#define IS_KW(NAME) (TOK.type == TOK_KW && TOK.val.kw == (KW_##NAME))
 #define INSERT node_insert(ast, pos, {.type = TOK.type, .val = TOK.val})
 #define INS_EXP node_insert(ast, pos, {.type = TOK_EXP, .val = {}})
 
@@ -30,6 +31,10 @@ static int
 expression(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+iteration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 
 static int
 primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
@@ -205,6 +210,69 @@ declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         }
         (*t_count)++;
 
+        return PAR_NO_ERR;
+}
+
+static int
+iteration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        if (!IS_KW(WHILE)) {
+                log("Error: Expected keyword 'while'.\n");
+                return PAR_EXP_EXPR;
+        } 
+        INSERT;
+        (*t_count)++;
+
+        if (!IS_PUNC(OPBRACE)) {
+                log("Error: Expected expression.\n");         
+                return PAR_EXP_EXPR;
+        }
+        (*t_count)++;
+
+        relational_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+        if (!IS_PUNC(CLBRACE)) {
+                log("Error: Expected expression.\n");         
+                return PAR_EXP_EXPR;
+        }
+        (*t_count)++;
+        expression(arr, t_count, ast, &ast->nodes[*pos].left);
+
+        return PAR_NO_ERR;
+}
+
+static int
+selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        if (!IS_KW(IF)) {
+                log("Error: Expected keyword 'if'.\n");
+                return PAR_EXP_EXPR;
+        } 
+        INSERT;
+        (*t_count)++;
+
+        if (!IS_PUNC(OPBRACE)) {
+                log("Error: Expected expression.\n");         
+                return PAR_EXP_EXPR;
+        }
+        (*t_count)++;
+
+        relational_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+        if (!IS_PUNC(CLBRACE)) {
+                log("Error: Expected expression.\n");         
+                return PAR_EXP_EXPR;
+        }
+        (*t_count)++;
+        expression(arr, t_count, ast, &ast->nodes[*pos].left);
 
         return PAR_NO_ERR;
 }
@@ -222,6 +290,10 @@ general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 int tmp = *pos;
                 if (TOK.type == TOK_DECL) {
                         declaration(arr, t_count, ast, &ast->nodes[tmp].right);
+                } else if (IS_KW(WHILE)) {
+                        iteration(arr, t_count, ast, &ast->nodes[tmp].right);
+                } else if (IS_KW(IF)) {
+                        selection(arr, t_count, ast, &ast->nodes[tmp].right);
                 } else {
                         expression(arr, t_count, ast, &ast->nodes[tmp].right);
                 }
@@ -282,8 +354,8 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
                 case TOK_OP:
                         fprintf(stream, " \'%d\'", tree->nodes[pos].data.val.op);
                         break;
-                case TOK_KWORD:
-                        assert(0 && "Keywords are not supported yet.\n");
+                case TOK_KW:
+                        fprintf(stream, " \'%d\'", tree->nodes[pos].data.val.kw);
                         break;
                 case TOK_PUNC:
                         assert(0 && "Punctuators should not be in AST.\n");

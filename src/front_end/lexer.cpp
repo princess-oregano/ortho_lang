@@ -29,6 +29,10 @@ get_word(char **word, char *start, size_t n)
                                 token->type = TOK_OP;    \
                                 token->val.op = OP_##NAME;  \
                            } else 
+#define DEF_KW(NAME, SIGN) if (strcmp(str, SIGN) == 0) { \
+                                token->type = TOK_KW;    \
+                                token->val.kw = KW_##NAME;  \
+                           } else 
 static int
 lex_token(token_t *token, char *str)
 {
@@ -55,6 +59,7 @@ lex_token(token_t *token, char *str)
                 token->type = TOK_EOF;
         } else
         #include "../operations.inc"
+        #include "../keywords.inc"
         {
                 log("Unknown command: '%s'. Treated as variable.\n", str);
                 token->type = TOK_VAR;
@@ -64,6 +69,7 @@ lex_token(token_t *token, char *str)
         return LEX_NO_ERR;
 }
 #undef DEF_OP
+#undef DEF_KW
 
 static int
 lex_alloc(tok_arr_t *arr, int cap)
