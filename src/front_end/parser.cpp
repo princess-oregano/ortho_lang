@@ -12,6 +12,8 @@
 #define IS_KW(NAME) (TOK.type == TOK_KW && TOK.val.kw == (KW_##NAME))
 #define INSERT node_insert(ast, pos, {.type = TOK.type, .val = TOK.val})
 #define INS_EXP node_insert(ast, pos, {.type = TOK_EXP, .val = {}})
+#define INS_BLOCK node_insert(ast, pos, {.type = TOK_BLOCK, .val = {}})
+#define INS_POISON node_insert(ast, pos, {.type = TOK_POISON, .val = {}})
 
 static int
 general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
@@ -35,6 +37,12 @@ static int
 iteration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+block_item(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+compound_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 
 static int
 primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
@@ -63,10 +71,10 @@ brace_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        if (IS_PUNC(OPBRACE)) {
+        if (IS_PUNC(OPROUND)) {
                 (*t_count)++;
                 add_expr(arr, t_count, ast, pos);
-                if (!IS_PUNC(CLBRACE)) {
+                if (!IS_PUNC(CLROUND)) {
                         log("Error: Expected closing brace.\n");
                         return PAR_BRACE;
                 }
@@ -228,19 +236,19 @@ iteration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         INSERT;
         (*t_count)++;
 
-        if (!IS_PUNC(OPBRACE)) {
+        if (!IS_PUNC(OPROUND)) {
                 log("Error: Expected expression.\n");         
                 return PAR_EXP_EXPR;
         }
         (*t_count)++;
 
         relational_expr(arr, t_count, ast, &ast->nodes[*pos].right);
-        if (!IS_PUNC(CLBRACE)) {
+        if (!IS_PUNC(CLROUND)) {
                 log("Error: Expected expression.\n");         
                 return PAR_EXP_EXPR;
         }
         (*t_count)++;
-        expression(arr, t_count, ast, &ast->nodes[*pos].left);
+        compound_statement(arr, t_count, ast, &ast->nodes[*pos].left);
 
         return PAR_NO_ERR;
 }
@@ -260,19 +268,96 @@ selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         INSERT;
         (*t_count)++;
 
-        if (!IS_PUNC(OPBRACE)) {
+        if (!IS_PUNC(OPROUND)) {
                 log("Error: Expected expression.\n");         
                 return PAR_EXP_EXPR;
         }
         (*t_count)++;
 
         relational_expr(arr, t_count, ast, &ast->nodes[*pos].right);
-        if (!IS_PUNC(CLBRACE)) {
+        if (!IS_PUNC(CLROUND)) {
                 log("Error: Expected expression.\n");         
                 return PAR_EXP_EXPR;
         }
         (*t_count)++;
-        expression(arr, t_count, ast, &ast->nodes[*pos].left);
+        compound_statement(arr, t_count, ast, &ast->nodes[*pos].left);
+
+        return PAR_NO_ERR;
+}
+
+static int
+statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        if (IS_PUNC(CLFIG)) {
+                compound_statement(arr, t_count, ast, pos);
+        } else if (IS_KW(IF)) {
+                selection(arr, t_count, ast, pos);
+        } else if (IS_KW(WHILE)) {
+                iteration(arr, t_count, ast, pos);
+        } else {
+                expression(arr, t_count, ast, pos);
+        }
+
+        return PAR_NO_ERR;
+}
+
+static int
+block_item(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        INS_EXP;
+        int tmp = *pos;
+        pos = &ast->nodes[*pos].right;
+
+        if (TOK.type == TOK_DECL) {
+                declaration(arr, t_count, ast, pos);
+        } else {
+                statement(arr, t_count, ast, pos);
+        }
+
+        pos = &ast->nodes[tmp].left;
+        INS_POISON;
+
+        return PAR_NO_ERR;
+}
+
+static int
+compound_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        INS_BLOCK;
+        int tmp = *pos;
+        pos = &ast->nodes[*pos].right;
+
+        if (!IS_PUNC(OPFIG)) {
+                log("Error: Expected '{'.\n");
+                return PAR_BRACE;
+        }
+        (*t_count)++;
+
+        while (!IS_PUNC(CLFIG)) {
+                block_item(arr, t_count, ast, pos);
+
+                include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
+                pos = &ast->nodes[*pos].left;
+        }
+        (*t_count)++;
+
+        pos = &ast->nodes[tmp].left;
+        INS_POISON;
 
         return PAR_NO_ERR;
 }
@@ -286,19 +371,10 @@ general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(*t_count < arr->cap);
 
         while (TOK.type != TOK_EOF) {
-                INS_EXP;
-                int tmp = *pos;
-                if (TOK.type == TOK_DECL) {
-                        declaration(arr, t_count, ast, &ast->nodes[tmp].right);
-                } else if (IS_KW(WHILE)) {
-                        iteration(arr, t_count, ast, &ast->nodes[tmp].right);
-                } else if (IS_KW(IF)) {
-                        selection(arr, t_count, ast, &ast->nodes[tmp].right);
-                } else {
-                        expression(arr, t_count, ast, &ast->nodes[tmp].right);
-                }
+                compound_statement(arr, t_count, ast, pos);
+
                 include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
-                pos = &ast->nodes[tmp].left;
+                pos = &ast->nodes[*pos].left;
         }
         INSERT;
         (*t_count)++;
@@ -338,6 +414,9 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
         switch (tree->nodes[pos].data.type) {
                 case TOK_POISON:
                         fprintf(stream, " \'VOID\'");
+                        break;
+                case TOK_BLOCK:
+                        fprintf(stream, " \'BLOCK\'");
                         break;
                 case TOK_EXP:
                         fprintf(stream, " \'EXP\'");

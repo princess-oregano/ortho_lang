@@ -75,6 +75,11 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
 
         // Need to add switch to print data correctly.
         switch (tree->nodes[curr].data.type) {
+                case TOK_BLOCK:
+                        fprintf(DMP_STREAM,
+                                "node%d [label = \"%d\\nBLOCK\", shape = rect]\n",
+                                node_count, curr);
+                        break;
                 case TOK_EXP:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\nEXP\", shape = rect]\n",

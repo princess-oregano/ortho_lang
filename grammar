@@ -4,7 +4,7 @@ VAR -- variable
 NUM -- number
 DECL -- declaration operator
 
-general :=              {declaration | expression}+
+general :=              {compound_statement}+
 
 primary_expr :=         NUM | 
                         VAR
@@ -25,4 +25,17 @@ expression :=           assign_expr ';'
 
 declaration :=          DECL VAR ';'
 
-iteration :=            WHILE '(' relarional_expr ')' expression
+iteration :=            WHILE '(' relarional_expr ')' compound_statement
+
+selection :=            IF '(' relational_expr ')' compound_statement
+
+statement :=            compound_statement |
+                        iteration |
+                        selection |
+                        expression
+
+block_item :=           declaration | 
+                        statement
+
+compound_statement :=   '{' {block_item}+ '}'
+

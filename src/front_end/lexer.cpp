@@ -33,6 +33,10 @@ get_word(char **word, char *start, size_t n)
                                 token->type = TOK_KW;    \
                                 token->val.kw = KW_##NAME;  \
                            } else 
+#define DEF_PUNC(NAME, SIGN) if (strcmp(str, SIGN) == 0) { \
+                                token->type = TOK_PUNC;    \
+                                token->val.punc = PUNC_##NAME;  \
+                           } else 
 static int
 lex_token(token_t *token, char *str)
 {
@@ -44,20 +48,12 @@ lex_token(token_t *token, char *str)
                 return LEX_NO_ERR;
         }
 
-        if (strcmp(str, ";") == 0) {
-                token->type = TOK_PUNC;
-                token->val.punc = PUNC_COLON;
-        } else if (strcmp(str, "(") == 0) {
-                token->type = TOK_PUNC;
-                token->val.punc = PUNC_OPBRACE;
-        } else if (strcmp(str, ")") == 0) {
-                token->type = TOK_PUNC;
-                token->val.punc = PUNC_CLBRACE;
-        } else if (strcmp(str, "int") == 0) {
+        if (strcmp(str, "int") == 0) {
                 token->type = TOK_DECL;
         } else if (strcmp(str, "#") == 0) {
                 token->type = TOK_EOF;
         } else
+        #include "../punctuators.inc"
         #include "../operations.inc"
         #include "../keywords.inc"
         {
@@ -70,6 +66,7 @@ lex_token(token_t *token, char *str)
 }
 #undef DEF_OP
 #undef DEF_KW
+#undef DEF_PUNC
 
 static int
 lex_alloc(tok_arr_t *arr, int cap)

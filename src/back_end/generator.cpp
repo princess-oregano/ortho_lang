@@ -161,6 +161,7 @@ static int
 gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
         switch (ast->nodes[*pos].data.type) {
+                case TOK_BLOCK:
                 case TOK_EXP:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
@@ -244,6 +245,8 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                 data.type = (tok_type_t) atoi(type);
                 switch (data.type) {
                         case TOK_POISON:
+                                break;
+                        case TOK_BLOCK:
                                 break;
                         case TOK_EXP:
                                 break;

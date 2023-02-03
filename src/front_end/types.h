@@ -2,13 +2,11 @@
 #define TYPES_H
 
 // Enum of available puntuators.
+#define DEF_PUNC(NAME, SIGN) PUNC_##NAME,
 enum punc_t {
-        PUNC_COLON = 1, 
-        PUNC_COMMA = 2,
-        PUNC_DOT   = 3,
-        PUNC_OPBRACE = 4,
-        PUNC_CLBRACE = 5,
+        #include "../punctuators.inc"
 };
+#undef DEF_PUNC
 
 // Enum of available operations.
 #define DEF_OP(NAME, SIGN) OP_##NAME,
@@ -35,6 +33,7 @@ enum tok_type_t {
         TOK_PUNC   = 6,   // Punctuator.
         TOK_EOF    = 7,   // End of file.
         TOK_EXP    = 666, // Expression token.
+        TOK_BLOCK  = 777, // Block token.
 };
 
 // Union with object
