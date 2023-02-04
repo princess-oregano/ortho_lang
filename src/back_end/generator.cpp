@@ -114,9 +114,9 @@ gen_kw(tree_t *ast, int *pos, FILE *stream)
                 case KW_IF:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
                         fprintf(stream, "       push 0\n"
-                                        "       je :L%d\n"
-                                        "L%d:\n", label1, label1);
+                                        "       je :L%d\n", label1);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "L%d:\n", label1);
                         break;
                 default:
                         assert(0 && "Invalid keyword type.");
