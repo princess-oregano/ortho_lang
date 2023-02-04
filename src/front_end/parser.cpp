@@ -282,6 +282,14 @@ selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         (*t_count)++;
         compound_statement(arr, t_count, ast, &ast->nodes[*pos].left);
 
+        if (IS_KW(ELSE)) {
+                int tmp = *pos;
+                INSERT;
+                node_bound(&ast->nodes[*pos].right, tmp);
+                (*t_count)++;
+                compound_statement(arr, t_count, ast, &ast->nodes[*pos].left);
+        }
+
         return PAR_NO_ERR;
 }
 
