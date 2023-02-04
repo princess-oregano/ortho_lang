@@ -66,6 +66,26 @@ op_node_graph_dump(tree_t *tree, int curr, int node_count)
                         break;
         }
 }
+#undef DEF_OP
+
+#define DEF_KW(NAME, SIGN) case KW_##NAME: \
+                                fprintf(DMP_STREAM, \
+                                        "node%d [label = \"%d\\n%s\", shape = rect]\n", \
+                                        node_count, curr, SIGN); \
+                                break;
+static void
+kw_node_graph_dump(tree_t *tree, int curr, int node_count)
+{
+        switch (tree->nodes[curr].data.val.kw) {
+                #include "../keywords.inc"
+                default:
+                        log("Invalid type encountered: %d.\n", 
+                                        tree->nodes[curr].data.val.op);
+                        assert(0 && "Invalid operation type encountered.");
+                        break;
+        }
+}
+#undef DEF_KW
 
 // Creates a graphviz dump of node and all nide's children.
 static void
@@ -113,14 +133,12 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
                 case TOK_OP:
                         op_node_graph_dump(tree, curr, node_count);
                         break;
+                case TOK_KW:
+                        kw_node_graph_dump(tree, curr, node_count);
+                        break;
                 case TOK_EOF:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\nEOF\", shape = rect]\n",
-                                node_count, curr);
-                        break;
-                case TOK_KW:
-                        fprintf(DMP_STREAM,
-                                "node%d [label = \"%d\\n kw\", shape = rect]\n",
                                 node_count, curr);
                         break;
                 default:
