@@ -108,6 +108,8 @@ distclean:
 	printf "%s\n" "Removing built files..."
 	rm -rf $(OBJDIR)
 	rm -rf dmp
+	rm test.ast test.asm test.mur
+	rm listing.txt
 	rm log.html
 	rm $(TEST_AST)
 	rm $(TEST_GEN)
