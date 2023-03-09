@@ -4,7 +4,7 @@ VAR -- variable
 NUM -- number
 DECL -- declaration operator
 
-general :=              {compound_statement}+
+general :=              {function}+
 
 primary_expr :=         NUM | 
                         VAR
@@ -35,7 +35,9 @@ statement :=            compound_statement |
                         expression
 
 block_item :=           declaration | 
-                        statement
+                        statement       
 
 compound_statement :=   '{' {block_item}+ '}'
+
+function :=             IDENTIFIER '(' ')' compound_statement
 

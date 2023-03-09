@@ -34,6 +34,7 @@ enum tok_type_t {
         TOK_EOF    = 7,   // End of file.
         TOK_EXP    = 666, // Expression token.
         TOK_BLOCK  = 777, // Block token.
+        TOK_FUNC   = 888, // Function token.
 };
 
 // Union with object

@@ -12,12 +12,13 @@
 #include "../file.h"
 #include "../log.h"
 
-static int LABEL_COUNT = 0;
-static int RAM_OFFSET = 0;
-static table_t table {};
-
 static int
 gen_write_asm(tree_t *ast, int *pos, FILE *stream);
+
+static int LABEL_COUNT = 0;
+static int RAM_OFFSET = 0;
+static table_t var_table {};
+static table_t func_table{};
 
 static int
 get_delim_buf(char **line, int delim, char *buffer)
@@ -42,8 +43,8 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
 {
         int tmp = ast->nodes[*pos].left;
 
-        int table_num = sym_find(ast->nodes[tmp].data.val.var, &table);
-        int offset = table.vars[table_num].ram;
+        int table_num = sym_find(ast->nodes[tmp].data.val.var, &var_table);
+        int offset = var_table.vars[table_num].ram;
 
         fprintf(stream, "       pop [rax + %d]\n", offset);
 }
@@ -141,12 +142,12 @@ gen_declare(tree_t *ast, int *pos)
         int tmp = *pos;
         *pos = ast->nodes[tmp].right;
 
-        if (sym_find(ast->nodes[*pos].data.val.var, &table) != -1) {
+        if (sym_find(ast->nodes[*pos].data.val.var, &var_table) != -1) {
                 log("Error: Variable has been already declared.\n");
                 return GEN_VAR_DECL;
         }
 
-        sym_insert(ast->nodes[*pos].data.val.var, &table, RAM_OFFSET);
+        sym_insert(ast->nodes[*pos].data.val.var, &var_table, RAM_OFFSET);
         RAM_OFFSET++;
 
         return GEN_NO_ERR;
@@ -155,13 +156,13 @@ gen_declare(tree_t *ast, int *pos)
 static int
 gen_variable(tree_t *ast, int *pos, FILE *stream)
 {
-        int table_num = sym_find(ast->nodes[*pos].data.val.var, &table);
+        int table_num = sym_find(ast->nodes[*pos].data.val.var, &var_table);
         if (table_num == -1) {
                 log("Error: Undeclared variable.\n");
                 return GEN_UNDECL;
         }
 
-        int offset = table.vars[table_num].ram;
+        int offset = var_table.vars[table_num].ram;
         fprintf(stream, "       push [rax + %d]\n", offset);
 
         return GEN_NO_ERR;
@@ -172,6 +173,13 @@ static int
 gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
         switch (ast->nodes[*pos].data.type) {
+                case TOK_FUNC:
+                        fprintf(stream, ".%s:\n", ast->nodes[*pos].data.val.var);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        if (strcmp("main", ast->nodes[*pos].data.val.var))
+                                fprintf(stream, "ret\n");
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        break;
                 case TOK_BLOCK:
                 case TOK_EXP:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
@@ -257,6 +265,9 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                 switch (data.type) {
                         case TOK_POISON:
                                 break;
+                        case TOK_FUNC:
+                                data.val.var = val;  
+                                break;
                         case TOK_BLOCK:
                                 break;
                         case TOK_EXP:
@@ -286,7 +297,7 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                 }
 
                 free(type);
-                if (data.type != TOK_VAR) {
+                if (data.type != TOK_VAR && data.type != TOK_FUNC) {
                         free(val);
                 } else {
                         id->ptrs[id->size] = val;
@@ -316,7 +327,7 @@ generator(char *ast_buffer, FILE *asm_stream)
 {
         tree_t ast {};
         tree_ctor(&ast, 200);
-        sym_ctor(100, &table);
+        sym_ctor(100, &var_table);
 
         iden_t id {};
         id_alloc(&id, 200);
@@ -328,7 +339,7 @@ generator(char *ast_buffer, FILE *asm_stream)
         gen_write_asm(&ast, &ast.root, asm_stream);
         
         id_free(&id);
-        sym_dtor(&table);
+        sym_dtor(&var_table);
         tree_dtor(&ast);
         return GEN_NO_ERR;
 }

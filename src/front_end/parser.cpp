@@ -13,6 +13,7 @@
 #define INSERT node_insert(ast, pos, {.type = TOK.type, .val = TOK.val})
 #define INS_EXP node_insert(ast, pos, {.type = TOK_EXP, .val = {}})
 #define INS_BLOCK node_insert(ast, pos, {.type = TOK_BLOCK, .val = {}})
+#define INS_FUNC node_insert(ast, pos, {.type = TOK_FUNC, .val = TOK.val})
 #define INS_POISON node_insert(ast, pos, {.type = TOK_POISON, .val = {}})
 
 static int
@@ -43,6 +44,8 @@ static int
 block_item(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 compound_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
+function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 
 static int
 primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
@@ -371,6 +374,42 @@ compound_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 }
 
 static int
+function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        if (TOK.type != TOK_VAR) {
+                log("Error: Expecter identifier.\n");
+                return PAR_EXP_EXPR;
+        }
+        INS_FUNC;
+        int tmp = *pos;
+        pos = &ast->nodes[*pos].right;
+
+        (*t_count)++;
+        if (!IS_PUNC(OPROUND)) {
+                log("Error: Expected '('.\n");
+                return PAR_BRACE;
+        }
+        (*t_count)++; 
+        if (!IS_PUNC(CLROUND)) {
+                log("Error: Expected ')'.\n");
+                return PAR_BRACE;
+        }
+        (*t_count)++; 
+
+        compound_statement(arr, t_count, ast, pos);
+
+        pos = &ast->nodes[tmp].left;
+        INS_POISON;
+
+        return PAR_NO_ERR;
+}
+
+static int
 general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 {
         assert(arr);
@@ -379,7 +418,7 @@ general(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(*t_count < arr->cap);
 
         while (TOK.type != TOK_EOF) {
-                compound_statement(arr, t_count, ast, pos);
+                function(arr, t_count, ast, pos);
 
                 include_graph(tree_graph_dump(ast, VAR_INFO(ast)));
                 pos = &ast->nodes[*pos].left;
@@ -422,6 +461,9 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
         switch (tree->nodes[pos].data.type) {
                 case TOK_POISON:
                         fprintf(stream, " \'VOID\'");
+                        break;
+                case TOK_FUNC:
+                        fprintf(stream, " \'%s\'", tree->nodes[pos].data.val.var);
                         break;
                 case TOK_BLOCK:
                         fprintf(stream, " \'BLOCK\'");
