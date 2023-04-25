@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "table.h" 
 #include "../log.h"
 
@@ -39,6 +40,9 @@ sym_ctor(int cap, table_t *table)
 int
 sym_insert(char *name, table_t *table, int ram)
 {
+        assert(name);
+        assert(table);
+
         int err = 0; 
         if (table->size >= table->cap - 1) {
                 if ((err = sym_alloc(2 * table->cap, table)) != TBL_NO_ERR)

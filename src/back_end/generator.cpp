@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "generator.h"
 #include "table.h"
+#include "../stack/stack.h"
 #include "../tree/tree.h"
 #include "../tree/tree_dump.h"
 #include "../front_end/types.h"
@@ -17,8 +18,37 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream);
 
 static int LABEL_COUNT = 0;
 static int RAM_OFFSET = 0;
+static stack_t var_stack {};
 static table_t var_table {};
 static table_t func_table{};
+
+static int
+gen_find()
+{
+        return GEN_NO_ERR;
+}
+
+static int
+gen_insert(stack_t *var_stack, tree_t *ast, int *pos)
+{
+        int tmp = ast->nodes[*pos].left;
+        table_t *tbl = var_stack->data[var_stack->size - 1];
+
+        sym_insert(ast->nodes[tmp].data.val.var, &var_table, RAM_OFFSET);
+
+        return GEN_NO_ERR;
+}
+
+static int
+gen_new_table(stack_t *var_stack)
+{
+        table_t *tmp = (table_t *) calloc(1, sizeof(table_t));
+
+        stack_push(var_stack, tmp);
+        RAM_OFFSET = 0;
+
+        return GEN_NO_ERR;
+}
 
 static int
 get_delim_buf(char **line, int delim, char *buffer)
@@ -44,9 +74,17 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
         int tmp = ast->nodes[*pos].left;
 
         int table_num = sym_find(ast->nodes[tmp].data.val.var, &var_table);
+        if (table_num == -1) {
+                fprintf(stderr, "init %s\n", ast->nodes[tmp].data.val.var);
+                sym_insert(ast->nodes[tmp].data.val.var, &var_table, RAM_OFFSET);
+                table_num = RAM_OFFSET;
+                RAM_OFFSET++;
+        }
+
+        table_num = sym_find(ast->nodes[tmp].data.val.var, &var_table);
         int offset = var_table.vars[table_num].ram;
 
-        fprintf(stream, "       pop [rax + %d]\n", offset);
+        fprintf(stream, "       pop [rbx + %d]\n", offset);
 }
 
 static void
@@ -55,7 +93,7 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
         if (ast->nodes[*pos].data.val.op != OP_ASSIGN)
                 gen_write_asm(ast, &ast->nodes[*pos].left, stream);
         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-        
+
         switch(ast->nodes[*pos].data.val.op) {
                 case OP_ADD:
                         fprintf(stream, "       add\n");
@@ -135,20 +173,15 @@ gen_kw(tree_t *ast, int *pos, FILE *stream)
                         break;
         }
 }
-        
-static int
-gen_declare(tree_t *ast, int *pos)
-{
-        int tmp = *pos;
-        *pos = ast->nodes[tmp].right;
 
-        if (sym_find(ast->nodes[*pos].data.val.var, &var_table) != -1) {
-                log("Error: Variable has been already declared.\n");
+static int
+gen_declare(tree_t *ast, int *pos, table_t *table)
+{
+        if (sym_find(ast->nodes[*pos].data.val.var, table) != -1) {
+                log("Error: Function has been already declared.\n");
                 return GEN_VAR_DECL;
         }
 
-        sym_insert(ast->nodes[*pos].data.val.var, &var_table, RAM_OFFSET);
-        RAM_OFFSET++;
 
         return GEN_NO_ERR;
 }
@@ -156,14 +189,25 @@ gen_declare(tree_t *ast, int *pos)
 static int
 gen_variable(tree_t *ast, int *pos, FILE *stream)
 {
-        int table_num = sym_find(ast->nodes[*pos].data.val.var, &var_table);
+        char *name = ast->nodes[*pos].data.val.var;
+
+        int table_num = sym_find(name, &func_table);
+
         if (table_num == -1) {
-                log("Error: Undeclared variable.\n");
-                return GEN_UNDECL;
+                table_num = sym_find(name, &var_table);
+                if (table_num == -1) {
+                        log("Error: Undeclared variable.\n");
+                        return GEN_UNDECL;
+                }
+        } else {
+                fprintf(stream, "\n       push rbx\n"
+                                  "       call :.%s\n"
+                                  "       pop rbx\n\n", name);
+                return GEN_NO_ERR;
         }
 
         int offset = var_table.vars[table_num].ram;
-        fprintf(stream, "       push [rax + %d]\n", offset);
+        fprintf(stream, "       push [rbx + %d]\n", offset);
 
         return GEN_NO_ERR;
 }
@@ -174,13 +218,22 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
         switch (ast->nodes[*pos].data.type) {
                 case TOK_FUNC:
-                        fprintf(stream, ".%s:\n", ast->nodes[*pos].data.val.var);
+                        fprintf(stream, ".%s:\n"
+                                        "       push rsp\n"
+                                        "       pop rbx\n\n", ast->nodes[*pos].data.val.var);
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        fprintf(stream, "\n       push rbx\n"
+                                          "       pop rsp\n");
                         if (strcmp("main", ast->nodes[*pos].data.val.var))
-                                fprintf(stream, "ret\n");
+                                fprintf(stream, "       ret\n\n");
+                        else
+                                fprintf(stream, "       hlt\n\n");
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         break;
                 case TOK_BLOCK:
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        break;
                 case TOK_EXP:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
@@ -188,8 +241,6 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                 case TOK_POISON:
                         break;
                 case TOK_DECL:
-                        if (gen_declare(ast, pos) != GEN_NO_ERR) 
-                                return GEN_VAR_DECL;
                         break;
                 case TOK_VAR:
                         if (gen_variable(ast, pos, stream) != GEN_NO_ERR)
@@ -208,8 +259,6 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                         assert(0 && "Punctuator encountered.");
                         break;
                 case TOK_EOF:
-                        fprintf(stream, "       out\n"
-                                        "       hlt\n\n");
                         break;
                 default:
                         assert(0 && "Invalid type encountered.");
@@ -247,7 +296,7 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                 buffer++;
                 i += get_delim_buf(&type, '\'', buffer) + 1;
                 buffer += i;
-                
+
                 for ( ; isspace(*buffer); buffer++)
                         ;
 
@@ -266,7 +315,8 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                         case TOK_POISON:
                                 break;
                         case TOK_FUNC:
-                                data.val.var = val;  
+                                data.val.var = val;
+                                sym_insert(val, &func_table, 0);
                                 break;
                         case TOK_BLOCK:
                                 break;
@@ -275,23 +325,23 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                         case TOK_DECL:
                                 break;
                         case TOK_VAR:
-                                data.val.var = val;  
+                                data.val.var = val;
                                 break;
                         case TOK_NUM:
-                                data.val.num = atof(val);  
+                                data.val.num = atof(val);
                                 break;
                         case TOK_OP:
-                                data.val.op = (op_t) atoi(val);  
+                                data.val.op = (op_t) atoi(val);
                                 break;
                         case TOK_KW:
-                                data.val.kw = (kword_t) atoi(val);  
+                                data.val.kw = (kword_t) atoi(val);
                                 break;
                         case TOK_PUNC:
                                 assert(0 && "Punctuators should not be in AST.\n");
                                 break;
                         case TOK_EOF:
                                 break;
-                        default: 
+                        default:
                                 assert(0 && "Invalid token type.\n");
                                 break;
                 }
@@ -328,6 +378,7 @@ generator(char *ast_buffer, FILE *asm_stream)
         tree_t ast {};
         tree_ctor(&ast, 200);
         sym_ctor(100, &var_table);
+        sym_ctor(100, &func_table);
 
         iden_t id {};
         id_alloc(&id, 200);
@@ -336,10 +387,13 @@ generator(char *ast_buffer, FILE *asm_stream)
         include_graph(tree_graph_dump(&ast, VAR_INFO(ast)));
 
         setvbuf(asm_stream, nullptr, _IONBF, 0);
+
+        fprintf(asm_stream, "jmp :.main\n\n");
         gen_write_asm(&ast, &ast.root, asm_stream);
-        
+
         id_free(&id);
         sym_dtor(&var_table);
+        sym_dtor(&func_table);
         tree_dtor(&ast);
         return GEN_NO_ERR;
 }

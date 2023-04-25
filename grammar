@@ -1,13 +1,13 @@
 GRAMMAR RULES OF ORTHOLANG
 
-VAR -- variable
+IDEN -- identifier
 NUM -- number
 DECL -- declaration operator
 
 general :=              {function}+
 
 primary_expr :=         NUM | 
-                        VAR
+                        IDEN |
 
 relational_expr :=      add_expr ['==' '!=' '<' '>' "<=" ">="] add_expr
 
@@ -19,11 +19,9 @@ brace_expr :=           '(' add_expr ')' |
                         primary_expr
 
 assign_expr :=          relational_expr | 
-                        VAR '=' relational_expr
+                        IDEN '=' relational_expr
 
 expression :=           assign_expr ';'
-
-declaration :=          DECL VAR ';'
 
 iteration :=            WHILE '(' relarional_expr ')' compound_statement
 
@@ -34,10 +32,12 @@ statement :=            compound_statement |
                         selection |
                         expression
 
-block_item :=           declaration | 
-                        statement       
+/*
+ *block_item :=           declaration | 
+ *                        statement     
+ */
 
-compound_statement :=   '{' {block_item}+ '}'
+compound_statement :=   '{' {statement}+ '}'
 
-function :=             IDENTIFIER '(' ')' compound_statement
+function :=             IDEN '(' ')' compound_statement
 

@@ -63,6 +63,15 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         INSERT;
         (*t_count)++;
 
+        if (IS_PUNC(OPROUND)) {
+                (*t_count)++;
+                if (!IS_PUNC(CLROUND)) {
+                        log("Error: Expected closing brace.\n");
+                        return PAR_BRACE;
+                }
+                (*t_count)++;
+        }
+
         return PAR_NO_ERR;
 }
 
@@ -205,7 +214,7 @@ declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 log("Error: Expected declarator.\n");
                 return PAR_EXP_DECL;
         }
-        INSERT;
+        INS_FUNC;
         (*t_count)++;
 
         if (TOK.type != TOK_VAR) {
@@ -304,7 +313,7 @@ statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        if (IS_PUNC(CLFIG)) {
+        if (IS_PUNC(OPFIG)) {
                 compound_statement(arr, t_count, ast, pos);
         } else if (IS_KW(IF)) {
                 selection(arr, t_count, ast, pos);

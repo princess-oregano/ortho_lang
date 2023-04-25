@@ -1,21 +1,19 @@
 main ()
 {
-        int x;
-        x = 3;
-        int y;
-        y = 1;
-        if (x <= 0) {
-                x = x - 1;
-                y = y * 4;   
-        } else {
-                if (y != 1) {
-                        y = y * 2;
-                } else {
-                        y = y * 8;
-                }
-        }
+        t = 3;
+        a = t * 2;
+        sum();
 
-        y;
+        a;
 }
+
+sum()
+{
+        t = t + 3;
+        a = a * 2;
+
+        a;
+}
+
 #
 
