@@ -1,6 +1,7 @@
 BACK_END := back_end
 FRONT_END := front_end
 TREE := tree
+STACK := stack
 
 TEST_AST := ast
 TEST_GEN := gen
@@ -11,19 +12,24 @@ OBJDIR = obj
 SRCDIR_BACK_END := $(addprefix $(SRCDIR)/, $(BACK_END))
 SRCDIR_FRONT_END := $(addprefix $(SRCDIR)/, $(FRONT_END))
 SRCDIR_TREE := $(addprefix $(SRCDIR)/, $(TREE))
+SRCDIR_STACK := $(addprefix $(SRCDIR)/, $(STACK))
+
 OBJDIR_BACK_END := $(addprefix $(OBJDIR)/, $(BACK_END))
 OBJDIR_FRONT_END := $(addprefix $(OBJDIR)/, $(FRONT_END))
 OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
+OBJDIR_STACK := $(addprefix $(OBJDIR)/, $(STACK))
 
-SRC := args.cpp file.cpp log.cpp identifiers.cpp
+SRC := args.cpp file.cpp log.cpp identifiers.cpp 
 SRC_BACK_END := main.cpp generator.cpp table.cpp
 SRC_FRONT_END := main.cpp lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp
+SRC_STACK := stack.cpp error.cpp 
 
 OBJ := $(addprefix $(OBJDIR)/, $(SRC:.cpp=.o))
 OBJ_BACK_END := $(addprefix $(OBJDIR_BACK_END)/, $(SRC_BACK_END:.cpp=.o))
 OBJ_FRONT_END := $(addprefix $(OBJDIR_FRONT_END)/, $(SRC_FRONT_END:.cpp=.o))
 OBJ_TREE := $(addprefix $(OBJDIR_TREE)/, $(SRC_TREE:.cpp=.o))
+OBJ_STACK := $(addprefix $(OBJDIR_STACK)/, $(SRC_STACK:.cpp=.o))
 
 CXX := g++
 CXXFLAGS := -O3 -g -std=c++14 -fmax-errors=100 -Wall -Wextra                  \
@@ -71,10 +77,10 @@ run:
 	./cpu test.ast
 	printf "%s\n" "Finished."
 
-out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE)
+out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ_STACK)
 	printf "%s\n" "Linking..."
 	$(CXX) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ) -o $(TEST_AST) $(CXXFLAGS)
-	$(CXX) $(OBJ_BACK_END) $(OBJ_TREE) $(OBJ) -o $(TEST_GEN) $(CXXFLAGS)
+	$(CXX) $(OBJ_BACK_END) $(OBJ_TREE) $(OBJ_STACK) $(OBJ) -o $(TEST_GEN) $(CXXFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	printf "%s\n" "Compiling $@..."
@@ -92,12 +98,17 @@ $(OBJDIR_TREE)/%.o: $(SRCDIR_TREE)/%.cpp
 	printf "%s\n" "Compiling $@..."
 	$(CXX) -c $^ -o  $@ $(CXXFLAGS)
 
+$(OBJDIR_STACK)/%.o: $(SRCDIR_STACK)/%.cpp
+	printf "%s\n" "Compiling $@..."
+	$(CXX) -c $^ -o  $@ $(CXXFLAGS)
+
 $(OBJDIR):
 	printf "%s\n" "Making $@/ directory..."
 	mkdir $@
 	mkdir $(OBJDIR_BACK_END)
 	mkdir $(OBJDIR_FRONT_END)
 	mkdir $(OBJDIR_TREE)
+	mkdir $(OBJDIR_STACK)
 
 clean:
 	printf "%s\n" "Removing $(OBJDIR)/ directory..."
