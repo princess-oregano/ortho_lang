@@ -37,6 +37,8 @@ declaration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 iteration(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
+jump_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
+static int
 selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
 static int
 statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos);
@@ -306,6 +308,28 @@ selection(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 }
 
 static int
+jump_statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
+{
+        assert(arr);
+        assert(t_count);
+        assert(ast);
+        assert(*t_count < arr->cap);
+
+        if (!IS_KW(RETURN)) {
+                log("Error: Expected keyword 'return'.\n");
+                return PAR_EXP_EXPR;
+        } 
+        INSERT;
+        (*t_count)++;
+
+        expression(arr, t_count, ast, &ast->nodes[*pos].right);
+
+        node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_POISON, .val = {}});
+
+        return PAR_NO_ERR;
+}
+
+static int
 statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 {
         assert(arr);
@@ -319,6 +343,8 @@ statement(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 selection(arr, t_count, ast, pos);
         } else if (IS_KW(WHILE)) {
                 iteration(arr, t_count, ast, pos);
+        } else if (IS_KW(RETURN)) {
+                jump_statement(arr, t_count, ast, pos);
         } else {
                 expression(arr, t_count, ast, pos);
         }

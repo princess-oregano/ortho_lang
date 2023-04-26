@@ -1,7 +1,8 @@
 sum()
 {
         t = 8;
-        t = t + 3;
+
+        return 5 + 3;
 }
 
 main ()

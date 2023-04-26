@@ -84,7 +84,6 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
 
         int table_num = sym_find(ast->nodes[tmp].data.val.var, var_table);
         if (table_num == -1) {
-                fprintf(stderr, "init %s\n", ast->nodes[tmp].data.val.var);
                 sym_insert(ast->nodes[tmp].data.val.var, var_table, RAM_OFFSET);
                 table_num = RAM_OFFSET;
                 RAM_OFFSET++;
@@ -178,6 +177,13 @@ gen_kw(tree_t *ast, int *pos, FILE *stream)
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         fprintf(stream, "L%d:\n", label2);
                         break;
+                case KW_RETURN:
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        fprintf(stream, "       pop rax\n");
+                        fprintf(stream, "\n       push rbx\n"
+                                          "       pop rsp\n");
+                        fprintf(stream, "       ret\n");
+                        break;
                 default:
                         assert(0 && "Invalid keyword type.");
                         break;
@@ -234,12 +240,11 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                                         "       push rsp\n"
                                         "       pop rbx\n\n", ast->nodes[*pos].data.val.var);
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        fprintf(stream, "\n       push rbx\n"
-                                          "       pop rsp\n");
-                        if (strcmp("main", ast->nodes[*pos].data.val.var))
-                                fprintf(stream, "       ret\n\n");
-                        else
+                        if (strcmp("main", ast->nodes[*pos].data.val.var) == 0) {
+                                fprintf(stream, "\n       push rbx\n"
+                                                  "       pop rsp\n");
                                 fprintf(stream, "       hlt\n\n");
+                        }
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         break;
                 case TOK_BLOCK:

@@ -23,6 +23,8 @@ assign_expr :=          relational_expr |
 
 expression :=           assign_expr ';'
 
+jump :=                 RETURN expression
+
 iteration :=            WHILE '(' relarional_expr ')' compound_statement
 
 selection :=            IF '(' relational_expr ')' compound_statement
