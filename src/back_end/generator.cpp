@@ -221,6 +221,7 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
                 fprintf(stream, "\n       push rbx\n"
                                   "       call :.%s\n"
                                   "       pop rbx\n\n", name);
+                fprintf(stream,   "       push rax\n");
                 return GEN_NO_ERR;
         }
 
