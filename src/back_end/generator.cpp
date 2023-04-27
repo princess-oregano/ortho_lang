@@ -40,17 +40,6 @@ get_delim_buf(char **line, int delim, char *buffer)
 }
 
 static int
-gen_insert(stack_t *var_stack, tree_t *ast, int *pos)
-{
-        int tmp = ast->nodes[*pos].left;
-        table_t *var_table = var_stack->data[var_stack->size - 1];
-
-        sym_insert(ast->nodes[tmp].data.val.var, var_table, RAM_OFFSET);
-
-        return GEN_NO_ERR;
-}
-
-static int
 gen_remove_table(stack_t *var_stack)
 {
         table_t *tmp = nullptr;
@@ -69,28 +58,38 @@ gen_new_table(stack_t *var_stack)
         sym_ctor(10, tmp); 
 
         stack_push(var_stack, tmp);
-        RAM_OFFSET = 0;
 
         return GEN_NO_ERR;
+}
+
+static int
+gen_find(char *name)
+{
+        int table_num = -1;
+
+        fprintf(stderr, "Dump:\n");
+        for (int i = var_stack.size - 1; i >= 0; i--) {
+                table_num = sym_find(name, var_stack.data[i]);
+                if (table_num != -1) {
+                        return var_stack.data[i]->vars[table_num].ram;
+                }
+        }
+
+        return -1;
 }
 
 static void
 gen_assign(tree_t *ast, int *pos, FILE *stream)
 {
         int tmp = ast->nodes[*pos].left;
-        table_t *var_table = nullptr;
-        stack_pop(&var_stack, &var_table);
-        stack_push(&var_stack, var_table);
 
-        int table_num = sym_find(ast->nodes[tmp].data.val.var, var_table);
-        if (table_num == -1) {
-                sym_insert(ast->nodes[tmp].data.val.var, var_table, RAM_OFFSET);
-                table_num = RAM_OFFSET;
+        int offset = gen_find(ast->nodes[tmp].data.val.var);
+        if (offset == -1) {
+                fprintf(stderr, "init %s\n", ast->nodes[tmp].data.val.var);
+                sym_insert(ast->nodes[tmp].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
+                offset = RAM_OFFSET;
                 RAM_OFFSET++;
         }
-
-        table_num = sym_find(ast->nodes[tmp].data.val.var, var_table);
-        int offset = var_table->vars[table_num].ram;
 
         fprintf(stream, "       pop [rbx + %d]\n", offset);
 }
@@ -211,9 +210,10 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
 
         int table_num = sym_find(name, &func_table);
 
+        int offset = -1;
         if (table_num == -1) {
-                table_num = sym_find(name, var_table);
-                if (table_num == -1) {
+                offset = gen_find(name);
+                if (offset == -1) {
                         log("Error: Undeclared variable.\n");
                         return GEN_UNDECL;
                 }
@@ -225,7 +225,6 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
                 return GEN_NO_ERR;
         }
 
-        int offset = var_table->vars[table_num].ram;
         fprintf(stream, "       push [rbx + %d]\n", offset);
 
         return GEN_NO_ERR;
@@ -237,6 +236,7 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
         switch (ast->nodes[*pos].data.type) {
                 case TOK_FUNC:
+                        RAM_OFFSET = 0;
                         fprintf(stream, ".%s:\n"
                                         "       push rsp\n"
                                         "       pop rbx\n\n", ast->nodes[*pos].data.val.var);

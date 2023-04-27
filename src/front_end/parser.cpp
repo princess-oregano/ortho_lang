@@ -421,15 +421,17 @@ function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 return PAR_EXP_EXPR;
         }
         INS_FUNC;
+        (*t_count)++;
+
         int tmp = *pos;
         pos = &ast->nodes[*pos].right;
 
-        (*t_count)++;
         if (!IS_PUNC(OPROUND)) {
                 log("Error: Expected '('.\n");
                 return PAR_BRACE;
         }
         (*t_count)++; 
+
         if (!IS_PUNC(CLROUND)) {
                 log("Error: Expected ')'.\n");
                 return PAR_BRACE;

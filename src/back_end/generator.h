@@ -9,6 +9,7 @@ enum gen_err_t {
         GEN_UNDECL = 2,
 };
 
+/// Generates asm code from AST.
 int
 generator(char *ast_buffer, FILE *asm_stream);
 
