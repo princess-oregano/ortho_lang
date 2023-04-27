@@ -4,17 +4,11 @@
 #include <string.h>
 #include <ctype.h>
 #include "generator.h"
-#include "table.h"
+#include "symbol.h"
 #include "../stack/stack.h"
-#include "../tree/tree.h"
-#include "../tree/tree_dump.h"
 #include "../front_end/types.h"
-#include "../identifiers.h"
 #include "../file.h"
 #include "../log.h"
-
-static int
-gen_write_asm(tree_t *ast, int *pos, FILE *stream);
 
 static int LABEL_COUNT = 0;
 static int RAM_OFFSET = 0;
@@ -39,53 +33,13 @@ get_delim_buf(char **line, int delim, char *buffer)
         return (int) count;
 }
 
-static int
-gen_remove_table(stack_t *var_stack)
-{
-        table_t *tmp = nullptr;
-
-        stack_pop(var_stack, &tmp);
-        sym_dtor(tmp);
-        free(tmp);
-
-        return GEN_NO_ERR;
-}
-
-static int
-gen_new_table(stack_t *var_stack)
-{
-        table_t *tmp = (table_t *) calloc(1, sizeof(table_t));
-        sym_ctor(10, tmp); 
-
-        stack_push(var_stack, tmp);
-
-        return GEN_NO_ERR;
-}
-
-static int
-gen_find(char *name)
-{
-        int table_num = -1;
-
-        fprintf(stderr, "Dump:\n");
-        for (int i = var_stack.size - 1; i >= 0; i--) {
-                table_num = sym_find(name, var_stack.data[i]);
-                if (table_num != -1) {
-                        return var_stack.data[i]->vars[table_num].ram;
-                }
-        }
-
-        return -1;
-}
-
 static void
 gen_assign(tree_t *ast, int *pos, FILE *stream)
 {
         int tmp = ast->nodes[*pos].left;
 
-        int offset = gen_find(ast->nodes[tmp].data.val.var);
+        int offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
         if (offset == -1) {
-                fprintf(stderr, "init %s\n", ast->nodes[tmp].data.val.var);
                 sym_insert(ast->nodes[tmp].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
                 offset = RAM_OFFSET;
                 RAM_OFFSET++;
@@ -94,7 +48,117 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
         fprintf(stream, "       pop [rbx + %d]\n", offset);
 }
 
-static void
+static int
+gen_variable(tree_t *ast, int *pos, FILE *stream)
+{
+        char *name = ast->nodes[*pos].data.val.var;
+
+        int table_num = sym_lookup(name, &func_table);
+
+        int offset = -1;
+        if (table_num == -1) {
+                offset = sym_find(name, &var_stack);
+                if (offset == -1) {
+                        log("Error: Undeclared variable.\n");
+                        return GEN_UNDECL;
+                }
+        } else {
+                fprintf(stream, "\n       push rbx\n"
+                                  "       call :.%s\n"
+                                  "       pop rbx\n\n", name);
+                fprintf(stream,   "       push rax\n");
+                return GEN_NO_ERR;
+        }
+
+        fprintf(stream, "       push [rbx + %d]\n", offset);
+
+        return GEN_NO_ERR;
+}
+
+int
+generator(char *ast_buffer, FILE *asm_stream)
+{
+        tree_t ast {};
+        tree_ctor(&ast, 200);
+        stack_ctor(&var_stack, 10, STK_VAR_INFO(var_stack));
+        sym_ctor(100, &func_table);
+
+        iden_t id {};
+        id_alloc(&id, 200);
+
+        gen_restore(&ast, ast_buffer, &ast.root, &id);
+        include_graph(tree_graph_dump(&ast, VAR_INFO(ast)));
+
+        setvbuf(asm_stream, nullptr, _IONBF, 0);
+
+        fprintf(asm_stream, "jmp :.main\n\n");
+        gen_write_asm(&ast, &ast.root, asm_stream);
+
+        id_free(&id);
+        sym_dtor(&func_table);
+        stack_dtor(&var_stack);
+        tree_dtor(&ast);
+        return GEN_NO_ERR;
+}
+
+int
+gen_write_asm(tree_t *ast, int *pos, FILE *stream)
+{
+        switch (ast->nodes[*pos].data.type) {
+                case TOK_FUNC:
+                        RAM_OFFSET = 0;
+                        fprintf(stream, ".%s:\n"
+                                        "       push rsp\n"
+                                        "       pop rbx\n\n", ast->nodes[*pos].data.val.var);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        if (strcmp("main", ast->nodes[*pos].data.val.var) == 0) {
+                                fprintf(stream, "\n       push rbx\n"
+                                                  "       pop rsp\n");
+                                fprintf(stream, "       hlt\n\n");
+                        }
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        break;
+                case TOK_BLOCK:
+                        sym_new_table(&var_stack);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        sym_remove_table(&var_stack);
+                        break;
+                case TOK_EXP:
+                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        break;
+                case TOK_POISON:
+                        break;
+                case TOK_DECL:
+                        break;
+                case TOK_VAR:
+                        if (gen_variable(ast, pos, stream) != GEN_NO_ERR)
+                                return GEN_UNDECL;
+                        break;
+                case TOK_NUM:
+                        fprintf(stream, "       push %lg\n", ast->nodes[*pos].data.val.num);
+                        break;
+                case TOK_OP:
+                        gen_op(ast, pos, stream);
+                        break;
+                case TOK_KW:
+                        gen_kw(ast, pos, stream);
+                        break;
+                case TOK_PUNC:
+                        assert(0 && "Punctuator encountered.");
+                        break;
+                case TOK_EOF:
+                        break;
+                default:
+                        assert(0 && "Invalid type encountered.");
+                        break;
+        }
+
+        return GEN_NO_ERR;
+}
+
+void
 gen_op(tree_t *ast, int *pos, FILE *stream)
 {
         if (ast->nodes[*pos].data.val.op != OP_ASSIGN)
@@ -142,7 +206,7 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
         }
 }
 
-static void
+void
 gen_kw(tree_t *ast, int *pos, FILE *stream)
 {
         int label1 = LABEL_COUNT++;
@@ -189,107 +253,7 @@ gen_kw(tree_t *ast, int *pos, FILE *stream)
         }
 }
 
-static int
-gen_declare(tree_t *ast, int *pos, table_t *table)
-{
-        if (sym_find(ast->nodes[*pos].data.val.var, table) != -1) {
-                log("Error: Function has been already declared.\n");
-                return GEN_VAR_DECL;
-        }
-
-        return GEN_NO_ERR;
-}
-
-static int
-gen_variable(tree_t *ast, int *pos, FILE *stream)
-{
-        char *name = ast->nodes[*pos].data.val.var;
-        table_t *var_table = nullptr;
-        stack_pop(&var_stack, &var_table);
-        stack_push(&var_stack, var_table);
-
-        int table_num = sym_find(name, &func_table);
-
-        int offset = -1;
-        if (table_num == -1) {
-                offset = gen_find(name);
-                if (offset == -1) {
-                        log("Error: Undeclared variable.\n");
-                        return GEN_UNDECL;
-                }
-        } else {
-                fprintf(stream, "\n       push rbx\n"
-                                  "       call :.%s\n"
-                                  "       pop rbx\n\n", name);
-                fprintf(stream,   "       push rax\n");
-                return GEN_NO_ERR;
-        }
-
-        fprintf(stream, "       push [rbx + %d]\n", offset);
-
-        return GEN_NO_ERR;
-}
-
-// Generates ASM code from AST.
-static int
-gen_write_asm(tree_t *ast, int *pos, FILE *stream)
-{
-        switch (ast->nodes[*pos].data.type) {
-                case TOK_FUNC:
-                        RAM_OFFSET = 0;
-                        fprintf(stream, ".%s:\n"
-                                        "       push rsp\n"
-                                        "       pop rbx\n\n", ast->nodes[*pos].data.val.var);
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        if (strcmp("main", ast->nodes[*pos].data.val.var) == 0) {
-                                fprintf(stream, "\n       push rbx\n"
-                                                  "       pop rsp\n");
-                                fprintf(stream, "       hlt\n\n");
-                        }
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        break;
-                case TOK_BLOCK:
-                        gen_new_table(&var_stack);
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        gen_remove_table(&var_stack);
-                        break;
-                case TOK_EXP:
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        break;
-                case TOK_POISON:
-                        break;
-                case TOK_DECL:
-                        break;
-                case TOK_VAR:
-                        if (gen_variable(ast, pos, stream) != GEN_NO_ERR)
-                                return GEN_UNDECL;
-                        break;
-                case TOK_NUM:
-                        fprintf(stream, "       push %lg\n", ast->nodes[*pos].data.val.num);
-                        break;
-                case TOK_OP:
-                        gen_op(ast, pos, stream);
-                        break;
-                case TOK_KW:
-                        gen_kw(ast, pos, stream);
-                        break;
-                case TOK_PUNC:
-                        assert(0 && "Punctuator encountered.");
-                        break;
-                case TOK_EOF:
-                        break;
-                default:
-                        assert(0 && "Invalid type encountered.");
-                        break;
-        }
-
-        return GEN_NO_ERR;
-}
-
-// Restores node from description from the buffer.
-static void
+void
 gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
 {
         assert(tree);
@@ -390,31 +354,5 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                         return;
                 }
         }
-}
-
-int
-generator(char *ast_buffer, FILE *asm_stream)
-{
-        tree_t ast {};
-        tree_ctor(&ast, 200);
-        stack_ctor(&var_stack, 10, STK_VAR_INFO(var_stack));
-        sym_ctor(100, &func_table);
-
-        iden_t id {};
-        id_alloc(&id, 200);
-
-        gen_restore(&ast, ast_buffer, &ast.root, &id);
-        include_graph(tree_graph_dump(&ast, VAR_INFO(ast)));
-
-        setvbuf(asm_stream, nullptr, _IONBF, 0);
-
-        fprintf(asm_stream, "jmp :.main\n\n");
-        gen_write_asm(&ast, &ast.root, asm_stream);
-
-        id_free(&id);
-        sym_dtor(&func_table);
-        stack_dtor(&var_stack);
-        tree_dtor(&ast);
-        return GEN_NO_ERR;
 }
 

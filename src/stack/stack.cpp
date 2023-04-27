@@ -5,7 +5,7 @@
 #include "error.h"
 #include "stack.h"
 
-static unsigned int
+[[maybe_unused]] static unsigned int
 crc8(unsigned int crc, void *data, size_t len)
 {
         unsigned char const *data_ptr = (unsigned char const *)data;
@@ -89,8 +89,8 @@ stack_ctor(stack_t *stack, unsigned int capacity, stk_var_info_t var_info)
                 memset(&stack->data[i], DATA_POISON, sizeof(elem_t));
 #ifdef HASH
         stack->crc_hash = crc8(0, stack, sizeof(stack_t));
-        stack->var_info = var_info;
 #endif
+        stack->var_info = var_info;
         stack->capacity = capacity;
 
         return err.val;

@@ -3,9 +3,9 @@ sum()
         return 5 + 3;
 }
 
-main ()
+main()
 {
-        t = 3;
+        t = -3;
         a = t * 2;
         {
                 a = sum() + 6;

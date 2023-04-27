@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "table.h" 
+#include "symbol.h" 
+#include "../stack/stack.h"
 #include "../log.h"
 
 static int
@@ -10,7 +11,7 @@ sym_alloc(int cap, table_t *table)
 {
         if (cap < 0) {
                 log("Error: Capacity must be larger or equal to 0.\n");
-                return TBL_BAD_CAP;
+                return SYM_BAD_CAP;
         }
 
         var_t *tmp = nullptr;
@@ -18,23 +19,23 @@ sym_alloc(int cap, table_t *table)
 
         if (tmp == nullptr) {
                 log("Error: Couldn't allocate memory for tokens.\n");
-                return TBL_ALLOC;
+                return SYM_ALLOC;
         }
 
         table->vars = tmp;
         table->cap = cap;
 
-        return TBL_NO_ERR;
+        return SYM_NO_ERR;
 }
 
 int
 sym_ctor(int cap, table_t *table)
 {
         int err = 0;
-        if ((err = sym_alloc(cap, table)) != TBL_NO_ERR)
+        if ((err = sym_alloc(cap, table)) != SYM_NO_ERR)
                 return err;
 
-        return TBL_NO_ERR;
+        return SYM_NO_ERR;
 }
 
 int
@@ -45,13 +46,13 @@ sym_insert(char *name, table_t *table, int ram)
 
         int err = 0; 
         if (table->size >= table->cap - 1) {
-                if ((err = sym_alloc(2 * table->cap, table)) != TBL_NO_ERR)
+                if ((err = sym_alloc(2 * table->cap, table)) != SYM_NO_ERR)
                         return err;
         }
 
-        if (sym_lookup(name, table)) {
+        if (sym_lookup(name, table) != -1) {
                 log("Error: variable already exists.\n");
-                return TBL_INSERT;
+                return SYM_INSERT;
         }
 
         table->vars[table->size].name = name;
@@ -59,11 +60,11 @@ sym_insert(char *name, table_t *table, int ram)
 
         table->size++;
 
-        return TBL_NO_ERR;
+        return SYM_NO_ERR;
 }
 
 [[nodiscard]] int
-sym_find(char *name, table_t *table)
+sym_lookup(char *name, table_t *table)
 {
         for (int i = 0; i < table->size; i++) {
                 if (strcmp(table->vars[i].name, name) == 0) {
@@ -74,16 +75,42 @@ sym_find(char *name, table_t *table)
         return -1;
 }
 
-[[nodiscard]] bool
-sym_lookup(char *name, table_t *table)
+int
+sym_remove_table(stack_t *tbl_stack)
 {
-        for (int i = 0; i < table->size; i++) {
-                if (strcmp(table->vars[i].name, name) == 0) {
-                        return true;
+        table_t *tmp = nullptr;
+
+        stack_pop(tbl_stack, &tmp);
+        sym_dtor(tmp);
+        free(tmp);
+
+        return SYM_NO_ERR;
+}
+
+int
+sym_new_table(stack_t *tbl_stack)
+{
+        table_t *tmp = (table_t *) calloc(1, sizeof(table_t));
+        sym_ctor(10, tmp); 
+
+        stack_push(tbl_stack, tmp);
+
+        return SYM_NO_ERR;
+}
+
+int
+sym_find(char *name, stack_t *tbl_stack)
+{
+        int table_num = -1;
+
+        for (int i = (int) tbl_stack->size - 1; i >= 0; i--) {
+                table_num = sym_lookup(name, tbl_stack->data[i]);
+                if (table_num != -1) {
+                        return tbl_stack->data[i]->vars[table_num].ram;
                 }
         }
 
-        return false;
+        return -1;
 }
 
 int
@@ -93,3 +120,4 @@ sym_dtor(table_t *table)
 
         return 0;
 }
+
