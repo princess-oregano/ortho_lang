@@ -433,24 +433,33 @@ function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         (*t_count)++;
 
         int tmp = *pos;
-        pos = &ast->nodes[*pos].right;
 
         if (!IS_PUNC(OPROUND)) {
                 log("Error: Expected '('.\n");
                 return PAR_BRACE;
         }
-        (*t_count)++; 
+        (*t_count)++;
+
+        while (TOK.type == TOK_VAR) {
+                pos = &ast->nodes[*pos].left;
+                primary_expr(arr, t_count, ast, pos);
+                if (!IS_PUNC(COMMA)) {
+                        break;
+                }
+                (*t_count)++;
+        }
 
         if (!IS_PUNC(CLROUND)) {
                 log("Error: Expected ')'.\n");
                 return PAR_BRACE;
         }
-        (*t_count)++; 
+        (*t_count)++;
 
+        pos = &ast->nodes[tmp].right;
         compound_statement(arr, t_count, ast, pos);
 
         pos = &ast->nodes[tmp].left;
-        INS_POISON;
+        node_bound(&ast->nodes[ast->nodes[tmp].right].left, *pos);
 
         return PAR_NO_ERR;
 }

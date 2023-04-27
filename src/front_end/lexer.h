@@ -4,7 +4,7 @@
 #include "types.h"
 #include "../identifiers.h"
 
-const char* const BREAKSET = " ;+-*/()\n\t\0";
+const char* const BREAKSET = " ,;+-*/()\n\t\0";
 
 enum lex_err {
         LEX_NO_ERR  = 0,
