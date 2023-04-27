@@ -5,6 +5,7 @@
 #include "../tree/tree.h"
 #include "../tree/tree_dump.h"
 #include "../log.h"
+#include "types.h"
 
 #define TOK arr->tok[*t_count]
 #define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == OP_##NAME)
@@ -57,12 +58,20 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        if (TOK.type != TOK_NUM && TOK.type != TOK_VAR) {
+        if (TOK.type != TOK_NUM && TOK.type != TOK_VAR && TOK.type != TOK_OP) {
                 log("Error: Expected number or variable.\n");
                 return PAR_NUMBER;
         }
 
-        INSERT;
+        if (TOK.type == TOK_OP) {
+                (*t_count)++;
+                node_insert(ast, pos, {.type = TOK_OP, .val = {.op = OP_SUB}});
+                node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_NUM, .val = {.num = 0}});
+                node_insert(ast, &ast->nodes[*pos].right, {.type = TOK.type, .val = TOK.val});
+        } else {
+                INSERT;
+        }
+
         (*t_count)++;
 
         if (IS_PUNC(OPROUND)) {
