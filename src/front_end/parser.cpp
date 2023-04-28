@@ -68,6 +68,7 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 node_insert(ast, pos, {.type = TOK_OP, .val = {.op = OP_SUB}});
                 node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_NUM, .val = {.num = 0}});
                 node_insert(ast, &ast->nodes[*pos].right, {.type = TOK.type, .val = TOK.val});
+                pos = &ast->nodes[*pos].right;
         } else {
                 INSERT;
         }
@@ -76,6 +77,15 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 
         if (IS_PUNC(OPROUND)) {
                 (*t_count)++;
+                while (primary_expr(arr, t_count, ast, &ast->nodes[*pos].left) != PAR_NUMBER) {
+                        node_insert(ast, &ast->nodes[*pos].right, {.type = TOK_POISON, .val = {}});
+                        node_insert(ast, &ast->nodes[ast->nodes[*pos].left].left, {.type = TOK_POISON, .val = {}});
+                        if (!IS_PUNC(COMMA)) {
+                                break;
+                        }
+                        (*t_count)++;
+                }
+
                 if (!IS_PUNC(CLROUND)) {
                         log("Error: Expected closing brace.\n");
                         return PAR_BRACE;
