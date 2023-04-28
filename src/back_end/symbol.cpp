@@ -9,6 +9,8 @@
 static int
 sym_alloc(int cap, table_t *table)
 {
+        assert(table);
+
         if (cap < 0) {
                 log("Error: Capacity must be larger or equal to 0.\n");
                 return SYM_BAD_CAP;
@@ -31,6 +33,8 @@ sym_alloc(int cap, table_t *table)
 int
 sym_ctor(int cap, table_t *table)
 {
+        assert(table);
+
         int err = 0;
         if ((err = sym_alloc(cap, table)) != SYM_NO_ERR)
                 return err;
@@ -66,6 +70,9 @@ sym_insert(char *name, table_t *table, int ram)
 [[nodiscard]] int
 sym_lookup(char *name, table_t *table)
 {
+        assert(name);
+        assert(table);
+
         for (int i = 0; i < table->size; i++) {
                 if (strcmp(table->vars[i].name, name) == 0) {
                         return i;
@@ -78,6 +85,8 @@ sym_lookup(char *name, table_t *table)
 int
 sym_remove_table(stack_t *tbl_stack)
 {
+        assert(tbl_stack);
+
         table_t *tmp = nullptr;
 
         stack_pop(tbl_stack, &tmp);
@@ -90,6 +99,8 @@ sym_remove_table(stack_t *tbl_stack)
 int
 sym_new_table(stack_t *tbl_stack)
 {
+        assert(tbl_stack);
+
         table_t *tmp = (table_t *) calloc(1, sizeof(table_t));
         sym_ctor(10, tmp); 
 
@@ -101,6 +112,9 @@ sym_new_table(stack_t *tbl_stack)
 int
 sym_find(char *name, stack_t *tbl_stack)
 {
+        assert(name);
+        assert(tbl_stack);
+
         int table_num = -1;
 
         for (int i = (int) tbl_stack->size - 1; i >= 0; i--) {
@@ -116,6 +130,8 @@ sym_find(char *name, stack_t *tbl_stack)
 int
 sym_dtor(table_t *table)
 {
+        assert(table);
+
         free(table->vars); 
 
         return 0;

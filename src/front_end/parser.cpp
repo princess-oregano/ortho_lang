@@ -443,11 +443,15 @@ function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         while (TOK.type == TOK_VAR) {
                 pos = &ast->nodes[*pos].left;
                 primary_expr(arr, t_count, ast, pos);
+                node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_POISON, .val = {}});
                 if (!IS_PUNC(COMMA)) {
                         break;
                 }
                 (*t_count)++;
         }
+
+        pos = &ast->nodes[*pos].left;
+        INS_POISON;
 
         if (!IS_PUNC(CLROUND)) {
                 log("Error: Expected ')'.\n");

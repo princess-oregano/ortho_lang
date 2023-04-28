@@ -1,4 +1,4 @@
-sum(r, s)
+sum(r)
 {
         return 5 + 3;
 }

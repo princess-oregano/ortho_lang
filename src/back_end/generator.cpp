@@ -18,6 +18,9 @@ static table_t func_table{};
 static int
 get_delim_buf(char **line, int delim, char *buffer)
 {
+        assert(line);
+        assert(buffer);
+
         size_t count = 0;
         for ( ; buffer[count] != delim; count++)
                 ;
@@ -36,6 +39,10 @@ get_delim_buf(char **line, int delim, char *buffer)
 static void
 gen_assign(tree_t *ast, int *pos, FILE *stream)
 {
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
         int tmp = ast->nodes[*pos].left;
 
         int offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
@@ -51,6 +58,10 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
 static int
 gen_variable(tree_t *ast, int *pos, FILE *stream)
 {
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
         char *name = ast->nodes[*pos].data.val.var;
 
         int table_num = sym_lookup(name, &func_table);
@@ -75,9 +86,31 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
         return GEN_NO_ERR;
 }
 
+static int
+gen_parameter(tree_t *ast, int *pos, FILE *stream)
+{
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
+        if (ast->nodes[*pos].data.type != TOK_POISON) {
+                sym_insert(ast->nodes[*pos].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
+                int offset = RAM_OFFSET;
+                RAM_OFFSET++;
+                fprintf(stream, "       pop [rbx + %d]\n", offset);
+
+                gen_parameter(ast, &ast->nodes[*pos].left, stream);
+        }
+        
+        return GEN_NO_ERR;
+}
+
 int
 generator(char *ast_buffer, FILE *asm_stream)
 {
+        assert(ast_buffer);
+        assert(asm_stream);
+
         tree_t ast {};
         tree_ctor(&ast, 200);
         stack_ctor(&var_stack, 10, STK_VAR_INFO(var_stack));
@@ -104,6 +137,10 @@ generator(char *ast_buffer, FILE *asm_stream)
 int
 gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 {
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
         switch (ast->nodes[*pos].data.type) {
                 case TOK_FUNC:
                         RAM_OFFSET = 0;
@@ -120,8 +157,9 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                         break;
                 case TOK_BLOCK:
                         sym_new_table(&var_stack);
+                        gen_parameter(ast, &ast->nodes[*pos].left, stream);
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        // Variables.
                         sym_remove_table(&var_stack);
                         break;
                 case TOK_EXP:
@@ -161,6 +199,10 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 void
 gen_op(tree_t *ast, int *pos, FILE *stream)
 {
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
         if (ast->nodes[*pos].data.val.op != OP_ASSIGN)
                 gen_write_asm(ast, &ast->nodes[*pos].left, stream);
 
@@ -209,6 +251,10 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
 void
 gen_kw(tree_t *ast, int *pos, FILE *stream)
 {
+        assert(ast);
+        assert(pos);
+        assert(stream);
+
         int label1 = LABEL_COUNT++;
         int label2 = 0;
         switch(ast->nodes[*pos].data.val.kw) {
@@ -258,6 +304,8 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
 {
         assert(tree);
         assert(buf);
+        assert(pos);
+        assert(id);
 
         static char *buffer = buf;
         char *type = nullptr;
