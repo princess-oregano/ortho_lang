@@ -58,12 +58,12 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
 static int
 gen_push_args(tree_t *ast, int *pos, FILE *stream, int *num_of_args)
 {
-        if (*pos == -1)
+        if (ast->nodes[*pos].data.type == TOK_POISON)
                 return GEN_NO_ERR;
 
-        gen_variable(ast, pos, stream);
-        (*num_of_args)++;
+        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
 
+        (*num_of_args)++;
         gen_push_args(ast, &ast->nodes[*pos].left, stream, num_of_args);
 
         return GEN_NO_ERR;
@@ -111,14 +111,18 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
 static int
 gen_embedded(tree_t *ast, int *pos, FILE *stream)
 {
+        int tmp = 0;
+        int offset = 0;
         switch(ast->nodes[*pos].data.val.em) {
                 case EMBED_PRINT:
-                        gen_variable(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        out");
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "        out\n");
                         break;
                 case EMBED_SCAN:
-                        fprintf(stream, "        in");
-                        gen_assign(ast, pos, stream);
+                        fprintf(stream, "        in\n");
+                        tmp = ast->nodes[ast->nodes[*pos].left].right;
+                        offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
+                        fprintf(stream, "        pop [rbx + %d]\n", offset);
                         break;
                 default:
                         assert(0 && "Invalid embedded function code.");
@@ -201,7 +205,6 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                         break;
                 case TOK_BLOCK:
                         sym_new_table(&var_stack);
-                        // Parameters.
                         if (ast->nodes[ast->nodes[*pos].left].data.type != TOK_POISON) {
                                 fprintf(stream, "        pop rcx\n        pop rdx\n");
                                 gen_parameter(ast, &ast->nodes[*pos].left, stream);

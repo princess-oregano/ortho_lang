@@ -79,8 +79,12 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
 
         if (IS_PUNC(OPROUND)) {
                 (*t_count)++;
-                while (primary_expr(arr, t_count, ast, &ast->nodes[*pos].left) != PAR_NUMBER) {
-                        node_insert(ast, &ast->nodes[*pos].right, {.type = TOK_POISON, .val = {}});
+                node_insert(ast, &ast->nodes[*pos].right, {.type = TOK_POISON, .val = {}});
+                while (!IS_PUNC(CLROUND)) {
+                        pos = &ast->nodes[*pos].left;
+                        INS_EXP;
+                        add_expr(arr, t_count, ast, &ast->nodes[*pos].right);
+                        node_insert(ast, &ast->nodes[*pos].left, {.type = TOK_POISON, .val = {}});
                         if (!IS_PUNC(COMMA)) {
                                 break;
                         }
