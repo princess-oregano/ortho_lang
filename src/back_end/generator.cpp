@@ -52,10 +52,24 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
                 RAM_OFFSET++;
         }
 
-        fprintf(stream, "       pop [rbx + %d]\n", offset);
+        fprintf(stream, "        pop [rbx + %d]\n", offset);
 }
 
 static int
+gen_push_args(tree_t *ast, int *pos, FILE *stream, int *num_of_args)
+{
+        if (*pos == -1)
+                return GEN_NO_ERR;
+
+        gen_variable(ast, pos, stream);
+        (*num_of_args)++;
+
+        gen_push_args(ast, &ast->nodes[*pos].left, stream, num_of_args);
+
+        return GEN_NO_ERR;
+}
+
+int
 gen_variable(tree_t *ast, int *pos, FILE *stream)
 {
         assert(ast);
@@ -74,14 +88,42 @@ gen_variable(tree_t *ast, int *pos, FILE *stream)
                         return GEN_UNDECL;
                 }
         } else {
-                fprintf(stream, "\n       push rbx\n"
-                                  "       call :.%s\n"
-                                  "       pop rbx\n\n", name);
-                fprintf(stream,   "       push rax\n");
+                int num_of_args = 0;
+                gen_push_args(ast, &ast->nodes[*pos].left, stream, &num_of_args);
+                fprintf(stream, "\n        push rbx\n"
+                                  "        call :.%s\n"
+                                  "        pop rbx\n\n", name);
+
+                fprintf(stream, "\n        push rsp\n"
+                                  "        push %d\n"
+                                  "        sub\n"
+                                  "        pop rsp\n", num_of_args);
+
+                fprintf(stream,   "        push rax\n");
                 return GEN_NO_ERR;
         }
 
-        fprintf(stream, "       push [rbx + %d]\n", offset);
+        fprintf(stream, "        push [rbx + %d]\n", offset);
+
+        return GEN_NO_ERR;
+}
+
+static int
+gen_embedded(tree_t *ast, int *pos, FILE *stream)
+{
+        switch(ast->nodes[*pos].data.val.em) {
+                case EMBED_PRINT:
+                        gen_variable(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "        out");
+                        break;
+                case EMBED_SCAN:
+                        fprintf(stream, "        in");
+                        gen_assign(ast, pos, stream);
+                        break;
+                default:
+                        assert(0 && "Invalid embedded function code.");
+                        break;
+        }
 
         return GEN_NO_ERR;
 }
@@ -97,9 +139,11 @@ gen_parameter(tree_t *ast, int *pos, FILE *stream)
                 sym_insert(ast->nodes[*pos].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
                 int offset = RAM_OFFSET;
                 RAM_OFFSET++;
-                fprintf(stream, "       pop [rbx + %d]\n", offset);
+                fprintf(stream, "        pop [rbx + %d]\n", offset);
 
                 gen_parameter(ast, &ast->nodes[*pos].left, stream);
+
+                fprintf(stream, "        push [rbx + %d]\n", offset);
         }
         
         return GEN_NO_ERR;
@@ -145,22 +189,29 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                 case TOK_FUNC:
                         RAM_OFFSET = 0;
                         fprintf(stream, ".%s:\n"
-                                        "       push rsp\n"
-                                        "       pop rbx\n\n", ast->nodes[*pos].data.val.var);
+                                        "        push rsp\n"
+                                        "        pop rbx\n\n", ast->nodes[*pos].data.val.var);
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
                         if (strcmp("main", ast->nodes[*pos].data.val.var) == 0) {
-                                fprintf(stream, "\n       push rbx\n"
-                                                  "       pop rsp\n");
-                                fprintf(stream, "       hlt\n\n");
+                                fprintf(stream, "\n        push rbx\n"
+                                                  "        pop rsp\n");
+                                fprintf(stream,   "        hlt\n\n");
                         }
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         break;
                 case TOK_BLOCK:
                         sym_new_table(&var_stack);
-                        gen_parameter(ast, &ast->nodes[*pos].left, stream);
+                        // Parameters.
+                        if (ast->nodes[ast->nodes[*pos].left].data.type != TOK_POISON) {
+                                fprintf(stream, "        pop rcx\n        pop rdx\n");
+                                gen_parameter(ast, &ast->nodes[*pos].left, stream);
+                                fprintf(stream, "        push rdx\n        push rcx\n");
+                        }
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        // Variables.
                         sym_remove_table(&var_stack);
+                        break;
+                case TOK_EMBED:
+                        gen_embedded(ast, pos, stream);
                         break;
                 case TOK_EXP:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
@@ -175,7 +226,7 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                                 return GEN_UNDECL;
                         break;
                 case TOK_NUM:
-                        fprintf(stream, "       push %lg\n", ast->nodes[*pos].data.val.num);
+                        fprintf(stream, "        push %lg\n", ast->nodes[*pos].data.val.num);
                         break;
                 case TOK_OP:
                         gen_op(ast, pos, stream);
@@ -210,37 +261,37 @@ gen_op(tree_t *ast, int *pos, FILE *stream)
 
         switch(ast->nodes[*pos].data.val.op) {
                 case OP_ADD:
-                        fprintf(stream, "       add\n");
+                        fprintf(stream, "        add\n");
                         break;
                 case OP_SUB:
-                        fprintf(stream, "       sub\n");
+                        fprintf(stream, "        sub\n");
                         break;
                 case OP_MUL:
-                        fprintf(stream, "       mul\n");
+                        fprintf(stream, "        mul\n");
                         break;
                 case OP_DIV:
-                        fprintf(stream, "       div\n");
+                        fprintf(stream, "        div\n");
                         break;
                 case OP_ASSIGN:
                         gen_assign(ast, pos, stream);
                         break;
                 case OP_EQ:
-                        fprintf(stream, "       eq\n");
+                        fprintf(stream, "        eq\n");
                         break;
                 case OP_NEQ:
-                        fprintf(stream, "       neq\n");
+                        fprintf(stream, "        neq\n");
                         break;
                 case OP_LEQ:
-                        fprintf(stream, "       geq\n");
+                        fprintf(stream, "        geq\n");
                         break;
                 case OP_GEQ:
-                        fprintf(stream, "       leq\n");
+                        fprintf(stream, "        leq\n");
                         break;
                 case OP_LESSER:
-                        fprintf(stream, "       gtr\n");
+                        fprintf(stream, "        gtr\n");
                         break;
                 case OP_GREATER:
-                        fprintf(stream, "       lsr\n");
+                        fprintf(stream, "        lsr\n");
                         break;
                 default:
                         assert(0 && "Invalid operation type.");
@@ -262,36 +313,36 @@ gen_kw(tree_t *ast, int *pos, FILE *stream)
                         fprintf(stream, "L%d:\n", label1);
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
                         label2 = LABEL_COUNT++;
-                        fprintf(stream, "       push 0\n"
-                                        "       je :L%d\n", label2);
+                        fprintf(stream, "        push 0\n"
+                                        "        je :L%d\n", label2);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "       jmp :L%d\n"
+                        fprintf(stream, "        jmp :L%d\n"
                                         "L%d:\n", label1, label2);
                         break;
                 case KW_IF:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        fprintf(stream, "       push 0\n"
-                                        "       je :L%d\n", label1);
+                        fprintf(stream, "        push 0\n"
+                                        "        je :L%d\n", label1);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         fprintf(stream, "L%d:\n", label1);
                         break;
                 case KW_ELSE:
                         gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].right, stream);
                         label2 = LABEL_COUNT++;
-                        fprintf(stream, "       push 0\n"
-                                        "       je :L%d\n", label1);
+                        fprintf(stream, "        push 0\n"
+                                        "        je :L%d\n", label1);
                         gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].left, stream);
-                        fprintf(stream, "       jmp :L%d\n", label2);
+                        fprintf(stream, "        jmp :L%d\n", label2);
                         fprintf(stream, "L%d:\n", label1);
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         fprintf(stream, "L%d:\n", label2);
                         break;
                 case KW_RETURN:
                         gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        fprintf(stream, "       pop rax\n");
-                        fprintf(stream, "\n       push rbx\n"
-                                          "       pop rsp\n");
-                        fprintf(stream, "       ret\n");
+                        fprintf(stream,   "        pop rax\n");
+                        fprintf(stream, "\n        push rbx\n"
+                                          "        pop rsp\n");
+                        fprintf(stream,   "        ret\n");
                         break;
                 default:
                         assert(0 && "Invalid keyword type.");
@@ -351,6 +402,9 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id)
                                 sym_insert(val, &func_table, 0);
                                 break;
                         case TOK_BLOCK:
+                                break;
+                        case TOK_EMBED:
+                                data.val.em = (embed_t) atoi(val);
                                 break;
                         case TOK_EXP:
                                 break;

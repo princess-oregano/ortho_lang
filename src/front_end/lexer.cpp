@@ -37,6 +37,11 @@ get_word(char **word, char *start, size_t n)
                                 token->type = TOK_PUNC;    \
                                 token->val.punc = PUNC_##NAME;  \
                            } else 
+#define DEF_EMBED(NAME, SIGN) if (strcmp(str, SIGN) == 0) { \
+                                token->type = TOK_EMBED;    \
+                                token->val.em = EMBED_##NAME;  \
+                           } else 
+
 static int
 lex_token(token_t *token, char *str)
 {
@@ -56,6 +61,7 @@ lex_token(token_t *token, char *str)
         #include "../punctuators.inc"
         #include "../operations.inc"
         #include "../keywords.inc"
+        #include "../embedded.inc"
         {
                 log("Unknown command: '%s'. Treated as variable.\n", str);
                 token->type = TOK_VAR;
@@ -67,6 +73,7 @@ lex_token(token_t *token, char *str)
 #undef DEF_OP
 #undef DEF_KW
 #undef DEF_PUNC
+#undef DEF_EMBED
 
 static int
 lex_alloc(tok_arr_t *arr, int cap)

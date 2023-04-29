@@ -20,6 +20,10 @@ generator(char *ast_buffer, FILE *asm_stream);
 void
 gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id);
 
+/// Handles identifiers.
+int
+gen_variable(tree_t *ast, int *pos, FILE *stream);
+
 /// Handles operations.
 void
 gen_op(tree_t *ast, int *pos, FILE *stream);

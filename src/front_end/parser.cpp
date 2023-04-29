@@ -15,6 +15,7 @@
 #define INS_EXP node_insert(ast, pos, {.type = TOK_EXP, .val = {}})
 #define INS_BLOCK node_insert(ast, pos, {.type = TOK_BLOCK, .val = {}})
 #define INS_FUNC node_insert(ast, pos, {.type = TOK_FUNC, .val = TOK.val})
+#define INS_EMBED node_insert(ast, pos, {.type = TOK_EMBED, .val = TOK.val})
 #define INS_POISON node_insert(ast, pos, {.type = TOK_POISON, .val = {}})
 
 static int
@@ -58,7 +59,8 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
         assert(ast);
         assert(*t_count < arr->cap);
 
-        if (TOK.type != TOK_NUM && TOK.type != TOK_VAR && TOK.type != TOK_OP) {
+        if (TOK.type != TOK_NUM && TOK.type != TOK_VAR && 
+            TOK.type != TOK_OP  && TOK.type != TOK_EMBED) {
                 log("Error: Expected number or variable.\n");
                 return PAR_NUMBER;
         }
@@ -79,7 +81,6 @@ primary_expr(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 (*t_count)++;
                 while (primary_expr(arr, t_count, ast, &ast->nodes[*pos].left) != PAR_NUMBER) {
                         node_insert(ast, &ast->nodes[*pos].right, {.type = TOK_POISON, .val = {}});
-                        node_insert(ast, &ast->nodes[ast->nodes[*pos].left].left, {.type = TOK_POISON, .val = {}});
                         if (!IS_PUNC(COMMA)) {
                                 break;
                         }
@@ -440,6 +441,7 @@ function(tok_arr_t *arr, int *t_count, tree_t *ast, int *pos)
                 return PAR_EXP_EXPR;
         }
         INS_FUNC;
+                
         (*t_count)++;
 
         int tmp = *pos;
@@ -536,6 +538,9 @@ print_node(tree_t *tree, int pos, FILE *stream, int level)
                         break;
                 case TOK_BLOCK:
                         fprintf(stream, " \'BLOCK\'");
+                        break;
+                case TOK_EMBED:
+                        fprintf(stream, " \'%d\'", tree->nodes[pos].data.val.em);
                         break;
                 case TOK_EXP:
                         fprintf(stream, " \'EXP\'");

@@ -105,6 +105,11 @@ node_graph_dump(tree_t *tree, int curr, int prev, const char *color)
                                 "node%d [label = \"%d\\nBLOCK\", shape = rect]\n",
                                 node_count, curr);
                         break;
+                case TOK_EMBED:
+                        fprintf(DMP_STREAM,
+                                "node%d [label = \"%d\\nEMBED %d\", shape = rect]\n",
+                                node_count, curr, tree->nodes[curr].data.val.em);
+                        break;
                 case TOK_EXP:
                         fprintf(DMP_STREAM,
                                 "node%d [label = \"%d\\nEXP\", shape = rect]\n",

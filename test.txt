@@ -1,6 +1,6 @@
 sum(r)
 {
-        return 5 + 3;
+        return r + 3;
 }
 
 main()
@@ -12,7 +12,9 @@ main()
                 f = a + 6;
         }
 
-        a;
+        h = 4;
+
+        print(h);
 }
 
 #
