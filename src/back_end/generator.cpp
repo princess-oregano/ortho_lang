@@ -70,7 +70,7 @@ gen_push_args(tree_t *ast, int *pos, FILE *stream, int *num_of_args)
 }
 
 int
-gen_variable(tree_t *ast, int *pos, FILE *stream)
+gen_identifier(tree_t *ast, int *pos, FILE *stream)
 {
         assert(ast);
         assert(pos);
@@ -118,6 +118,18 @@ gen_embedded(tree_t *ast, int *pos, FILE *stream)
                         gen_write_asm(ast, &ast->nodes[*pos].left, stream);
                         fprintf(stream, "        out\n");
                         break;
+                case EMBED_SIN:
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "        sin\n");
+                        break;
+                case EMBED_COS:
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "        cos\n");
+                        break;
+                case EMBED_SQRT:
+                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        fprintf(stream, "        sqrt\n");
+                        break;
                 case EMBED_SCAN:
                         fprintf(stream, "        in\n");
                         tmp = ast->nodes[ast->nodes[*pos].left].right;
@@ -140,13 +152,12 @@ gen_parameter(tree_t *ast, int *pos, FILE *stream)
         assert(stream);
 
         if (ast->nodes[*pos].data.type != TOK_POISON) {
-                sym_insert(ast->nodes[*pos].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
-                int offset = RAM_OFFSET;
-                RAM_OFFSET++;
+                int offset = RAM_OFFSET++;
+                sym_insert(ast->nodes[*pos].data.val.var, 
+                           var_stack.data[var_stack.size - 1], offset);
+
                 fprintf(stream, "        pop [rbx + %d]\n", offset);
-
                 gen_parameter(ast, &ast->nodes[*pos].left, stream);
-
                 fprintf(stream, "        push [rbx + %d]\n", offset);
         }
         
@@ -159,10 +170,11 @@ generator(char *ast_buffer, FILE *asm_stream)
         assert(ast_buffer);
         assert(asm_stream);
 
-        tree_t ast {};
-        tree_ctor(&ast, 200);
         stack_ctor(&var_stack, 10, STK_VAR_INFO(var_stack));
         sym_ctor(100, &func_table);
+
+        tree_t ast {};
+        tree_ctor(&ast, 200);
 
         iden_t id {};
         id_alloc(&id, 200);
@@ -225,7 +237,7 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
                 case TOK_DECL:
                         break;
                 case TOK_VAR:
-                        if (gen_variable(ast, pos, stream) != GEN_NO_ERR)
+                        if (gen_identifier(ast, pos, stream) != GEN_NO_ERR)
                                 return GEN_UNDECL;
                         break;
                 case TOK_NUM:

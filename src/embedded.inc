@@ -1,2 +1,5 @@
 DEF_EMBED(PRINT, "print")
 DEF_EMBED(SCAN, "scan")
+DEF_EMBED(SIN, "sin")
+DEF_EMBED(COS, "cos")
+DEF_EMBED(SQRT, "sqrt")

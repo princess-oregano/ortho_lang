@@ -22,7 +22,7 @@ gen_restore(tree_t *tree, char *buf, int *pos, iden_t *id);
 
 /// Handles identifiers.
 int
-gen_variable(tree_t *ast, int *pos, FILE *stream);
+gen_identifier(tree_t *ast, int *pos, FILE *stream);
 
 /// Handles operations.
 void

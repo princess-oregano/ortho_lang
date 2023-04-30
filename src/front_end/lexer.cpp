@@ -55,8 +55,6 @@ lex_token(token_t *token, char *str)
 
         if (strcmp(str, "int") == 0) {
                 token->type = TOK_DECL;
-        } else if (strcmp(str, "#") == 0) {
-                token->type = TOK_EOF;
         } else
         #include "../punctuators.inc"
         #include "../operations.inc"
@@ -154,6 +152,8 @@ lexer(char *buffer, tok_arr_t *arr, iden_t *id)
                 while (isspace(*buffer))
                         buffer++;
         }
+
+        arr->tok[tok_count].type = TOK_EOF;
 
         return LEX_NO_ERR;
 }
