@@ -1,7 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "types.h"
+#include "../types.h"
 #include "../identifiers.h"
 
 const char* const BREAKSET = " ,;+-*/()\n\t\0";

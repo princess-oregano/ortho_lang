@@ -2,7 +2,7 @@
 #define TREE_DUMP_H
 
 #include "tree.h"
-#include "../front_end/types.h"
+#include "../types.h"
 
 #define VAR_INFO(var) ((var_info_t) {__FILE__, __LINE__, __PRETTY_FUNCTION__, #var})
 

@@ -1,7 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
-#include "../front_end/types.h"
+#include "../types.h"
 
 enum tree_error_t {
         ERR_NO_ERR = 0,

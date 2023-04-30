@@ -4,28 +4,28 @@
 // Enum of available puntuators.
 #define DEF_PUNC(NAME, SIGN) PUNC_##NAME,
 enum punc_t {
-        #include "../punctuators.inc"
+        #include "punctuators.inc"
 };
 #undef DEF_PUNC
 
 // Enum of available operations.
 #define DEF_OP(NAME, SIGN) OP_##NAME,
 enum op_t {
-        #include "../operations.inc"
+        #include "operations.inc"
 };
 #undef DEF_OP
 
 // Enum of available keywords.
 #define DEF_KW(NAME, SIGN) KW_##NAME,
 enum kword_t {
-        #include "../keywords.inc"
+        #include "keywords.inc"
 };
 #undef DEF_KW
 
 // Enum of available embedded functions.
 #define DEF_EMBED(NAME, SIGN) EMBED_##NAME,
 enum embed_t {
-        #include "../embedded.inc"
+        #include "embedded.inc"
 };
 #undef DEF_EMBED
 
