@@ -12,7 +12,7 @@ main()
         en_code_ctor(&code, 1000);
 
         arg_t arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
-        arg_t arg2 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+        arg_t arg2 = {.type = ARG_MEM, .val = {.mem = {.reg_on = true, .reg = REG_ECX}}};
         encode(&code, {.instr = INSTR_ADD, .arg1 = arg1, .arg2 = arg2});
 
         for (int i = 0; i < code.size; i++) {

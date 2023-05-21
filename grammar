@@ -41,5 +41,5 @@ statement :=            compound_statement |
 
 compound_statement :=   '{' {statement}+ '}'
 
-function :=             IDEN '(' ')' compound_statement
+function :=             IDEN '(' {add_expr}* ')' compound_statement
 

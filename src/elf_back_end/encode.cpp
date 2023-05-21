@@ -148,14 +148,15 @@ en_mem(code_t *code, arg_t *mem, arg_t *non_mem)
                 rm |= MOD_DISP8;
         }
 
-        if (mem->val.mem.reg_on) {
-                rm |= (mem->val.reg << 3);
-                rm |=  non_mem->val.reg;
-        } else if (mem->val.mem.sib_on) {
+        if (mem->val.mem.sib_on) {
                 rm |= (non_mem->val.reg << 3);
                 rm |= REG_ESP;
                 en_add_byte(code, rm);
                 en_sib(code, &mem->val.mem);
+        } else if (mem->val.mem.reg_on) {
+                rm |= (non_mem->val.reg << 3);
+                rm |=  mem->val.mem.reg;
+                en_add_byte(code, rm);
         }
 
         if (mem->val.mem.disp_on) {
@@ -179,17 +180,20 @@ en_args(code_t *code, arg_t arg1, arg_t arg2)
                                 rm |= (arg2.val.reg << 3);
                                 rm |=  arg1.val.reg;
                                 en_add_byte(code, rm);
-                        break;
                         } else if (arg1.type == ARG_IMM) {
-                                /* TODO: Immediate -- exception + mask for prev instr*/
+                                // Invalid, as arg1 == imm is possible only in 
+                                // exceptions such as int, push/pop, call, etc.
+                                assert(0 && "Invalid arg1 value.");
                         } else if (arg1.type == ARG_MEM) {
                                 en_mem(code, &arg1, &arg2);
                         }
+                        break;
                 case ARG_MEM:
+                        code->code[code->size - 1] |= DEST_MASK;
                         en_mem(code, &arg2, &arg1);
                         break;
+                // arg2 imm is exception.
                 case ARG_IMM:
-                // Exception of push/pop, where arg2 is absent.
                 case ARG_INV:
                 default:
                         assert(0 && "Invalid arg1 type.");
@@ -230,15 +234,45 @@ int
 encode(code_t *code, cmd_token_t cmd)
 {
         assert(code);
+        /* TODO: Write some function to process immediate arg */
 
         // First byte is opcode.
         switch (cmd.instr) {
+                case INSTR_MOV:
+                        /* TODO: Separate function to handle mov */
+                        break;
                 case INSTR_PUSH:
                 case INSTR_POP:
                         en_push_pop(code, cmd);
                         break;
                 case INSTR_ADD:
                         en_add_byte(code, ADD | SIZE_MASK);
+                        en_args(code, cmd.arg1, cmd.arg2);
+                        break;
+                case INSTR_SUB:
+                        en_add_byte(code, SUB | SIZE_MASK);
+                        en_args(code, cmd.arg1, cmd.arg2);
+                        break;
+                case INSTR_DIV:
+                case INSTR_MUL:
+                        /* TODO: Mul/div: handle somehow */
+                case INSTR_OR:
+                case INSTR_AND:
+                case INSTR_XOR:
+                        /* TODO: Same as ADD */
+                        break;
+                case INSTR_CALL:
+                        /* TODO: How to calculate relative jump? */
+                        en_add_byte(code, CALL);
+                        en_add_imm32(code, &cmd.arg1.val.imm);
+                        break;
+                case INSTR_JMP:
+                        /* TODO: Same question */
+                        en_add_byte(code, JMP);
+                        en_add_imm32(code, &cmd.arg1.val.imm);
+                        break;
+                case INSTR_CMP:
+                        en_add_byte(code, CMP + DEST_MASK);
                         en_args(code, cmd.arg1, cmd.arg2);
                         break;
                 default:

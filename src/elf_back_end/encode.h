@@ -6,16 +6,30 @@
 
 // Prefixes.
 const uint8_t PUSH_POP_MEM = 0x66;
+const uint8_t PREFIX       = 0x0F;
 
 // Op-codes for instructions.
-const uint8_t PUSH_IMM = 0x68;
-const uint8_t PUSH_REG = 0x50;
-const uint8_t PUSH_MEM = 0xFF;
-
+const uint8_t PUSH_IMM    = 0x68;
+const uint8_t PUSH_REG    = 0x50;
+const uint8_t PUSH_MEM    = 0xFF;
 const uint8_t POP_REG     = 0x58;
-const uint8_t ADD         = 0x00;
 const uint8_t MOV_REG_IMM = 0xB8;
 const uint8_t MOV_MEM_IMM = 0xC7;
+const uint8_t MOV         = 0x88;
+
+const uint8_t ADD         = 0x00;
+const uint8_t SUB         = 0x28;
+const uint8_t MUL         = 0xF6;
+const uint8_t DIV         = 0xF6;
+const uint8_t OR          = 0x08;
+const uint8_t AND         = 0x20;
+const uint8_t XOR         = 0x30;
+const uint8_t CMP         = 0x38;
+const uint8_t JMP         = 0xE9;
+const uint8_t CALL        = 0xE8;
+
+// Immediate arg exception.
+const uint8_t IMM_EXC     = 0x80;
 
 // Op-code masks.
 const uint8_t IMM_MASK  = 0x80;
@@ -88,6 +102,11 @@ enum instr_t {
         INSTR_POP  = 5,
         INSTR_MOV  = 6,
         INSTR_CALL = 7,
+        INSTR_AND  = 8,
+        INSTR_OR   = 9,
+        INSTR_XOR  = 10,
+        INSTR_CMP  = 11,
+        INSTR_JMP  = 12,
 };
 
 /// Instruction token.
