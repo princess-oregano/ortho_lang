@@ -6,7 +6,7 @@
 #include <assert.h>
 #include "lexer.h"
 #include "../log.h"
-#include "types.h"
+#include "../types.h"
 
 static int
 get_word(char **word, char *start, size_t n)

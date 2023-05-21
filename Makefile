@@ -1,4 +1,4 @@
-BACK_END := back_end
+BACK_END := elf_back_end
 FRONT_END := front_end
 TREE := tree
 STACK := stack
@@ -20,7 +20,7 @@ OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 OBJDIR_STACK := $(addprefix $(OBJDIR)/, $(STACK))
 
 SRC := args.cpp file.cpp log.cpp identifiers.cpp 
-SRC_BACK_END := main.cpp generator.cpp symbol.cpp
+SRC_BACK_END := main.cpp encode.cpp
 SRC_FRONT_END := main.cpp lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp
 SRC_STACK := stack.cpp error.cpp 
@@ -66,16 +66,16 @@ CXXFLAGS := -O3 -g -std=c++14 -fmax-errors=100 -Wall -Wextra                  \
 all: out run
 
 run:
-	printf "%s\n" "Running..."
-	printf "%s\n" "Building AST..."
-	./$(TEST_AST) test.txt
-	printf "%s\n" "Generating ASM..."
-	./$(TEST_GEN) test.ast
-	printf "%s\n" "Running ASM..."
-	./asm test.asm
-	printf "%s\n" "Running CPU..."
-	./cpu test.ast
-	printf "%s\n" "Finished."
+	#printf "%s\n" "Running..."
+	#printf "%s\n" "Building AST..."
+	#./$(TEST_AST) test.txt
+	#printf "%s\n" "Generating ASM..."
+	#./$(TEST_GEN) test.ast
+	#printf "%s\n" "Running ASM..."
+	#./asm test.asm
+	#printf "%s\n" "Running CPU..."
+	#./cpu test.ast
+	#printf "%s\n" "Finished."
 
 out: $(OBJDIR) $(OBJ) $(OBJ_BACK_END) $(OBJ_FRONT_END) $(OBJ_TREE) $(OBJ_STACK)
 	printf "%s\n" "Linking..."

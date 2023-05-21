@@ -5,7 +5,7 @@
 #include "../tree/tree.h"
 #include "../tree/tree_dump.h"
 #include "../log.h"
-#include "types.h"
+#include "../types.h"
 
 #define TOK arr->tok[*t_count]
 #define IS_OP(NAME) (TOK.type == TOK_OP && TOK.val.op == OP_##NAME)

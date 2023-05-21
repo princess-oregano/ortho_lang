@@ -6,7 +6,7 @@
 #include "generator.h"
 #include "symbol.h"
 #include "../stack/stack.h"
-#include "../front_end/types.h"
+#include "../types.h"
 #include "../file.h"
 #include "../log.h"
 
