@@ -205,21 +205,23 @@ en_args(code_t *code, arg_t arg1, arg_t arg2)
 
 // Push/pop have one argument only, so handle them with separate function.
 static int
-en_push_pop(code_t *code, cmd_token_t cmd)
+en_push_pop(code_t *code, cmd_token_t *cmd)
 {
         assert(code);
 
-        switch (cmd.arg1.type) {
+        arg_t mem_push_pop = {.type = ARG_REG, .val = {.reg = REG_ESI}};
+
+        switch (cmd->arg1.type) {
                 case ARG_REG:
-                        en_simple(code, cmd);
+                        en_simple(code, *cmd);
                         break;
                 case ARG_IMM:
                         en_add_byte(code, PUSH_IMM);
-                        en_add_imm32(code, &cmd.arg1.val.imm);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
                         break;
                 case ARG_MEM:
                         en_add_byte(code, PUSH_MEM);
-                        // TODO: en_mem();
+                        en_mem(code, &cmd->arg1, &mem_push_pop);
                         break;
                 case ARG_INV:
                 default:
@@ -230,16 +232,90 @@ en_push_pop(code_t *code, cmd_token_t cmd)
         return EN_NO_ERR;
 }
 
+int 
+en_imm(code_t *code, cmd_token_t *cmd)
+{
+        arg_t tmp_arg = {.type = ARG_REG};
+        
+        switch (cmd->instr) {
+                case INSTR_MOV:
+                        if (cmd->arg1.type == ARG_REG) {
+                                en_add_byte(code, MOV_REG_IMM + cmd->arg1.val.reg);
+                                en_add_imm32(code, &cmd->arg2.val.imm);
+                        } else {
+                                en_add_byte(code, MOV_MEM_IMM | SIZE_MASK);
+                                tmp_arg.val.reg = REG_EAX;
+                                en_args(code, cmd->arg1, tmp_arg);
+                                en_add_imm32(code, &cmd->arg2.val.imm);
+                        }
+                        break;
+                case INSTR_PUSH:
+                case INSTR_POP:
+                        en_push_pop(code, cmd);
+                        break;
+                case INSTR_ADD:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_EAX;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_SUB:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_EBP;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_OR:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_ECX;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_AND:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_EBX;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_XOR:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_ESI;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_CMP:
+                        en_add_byte(code, IMM_EXC | SIZE_MASK | DEST_MASK);
+                        tmp_arg.val.reg = REG_EDI;
+                        en_args(code, cmd->arg1, tmp_arg);
+                        en_add_imm32(code, &cmd->arg2.val.imm);
+                        break;
+                case INSTR_DIV:
+                case INSTR_MUL:
+                case INSTR_CALL:
+                case INSTR_JMP:
+                default:
+                        assert(0 && "Invalid instruction.");
+                        break;
+        }
+
+        return EN_NO_ERR;
+}
+
 int
-encode(code_t *code, cmd_token_t cmd)
+en_emit(code_t *code, cmd_token_t *cmd)
 {
         assert(code);
-        /* TODO: Write some function to process immediate arg */
+
+        if (cmd->arg2.type == ARG_IMM) {
+                en_imm(code, cmd);
+                return EN_NO_ERR;
+        }
 
         // First byte is opcode.
-        switch (cmd.instr) {
+        switch (cmd->instr) {
                 case INSTR_MOV:
-                        /* TODO: Separate function to handle mov */
+                        en_add_byte(code, MOV | SIZE_MASK);
+                        en_args(code, cmd->arg1, cmd->arg2);
                         break;
                 case INSTR_PUSH:
                 case INSTR_POP:
@@ -247,33 +323,43 @@ encode(code_t *code, cmd_token_t cmd)
                         break;
                 case INSTR_ADD:
                         en_add_byte(code, ADD | SIZE_MASK);
-                        en_args(code, cmd.arg1, cmd.arg2);
+                        en_args(code, cmd->arg1, cmd->arg2);
                         break;
                 case INSTR_SUB:
                         en_add_byte(code, SUB | SIZE_MASK);
-                        en_args(code, cmd.arg1, cmd.arg2);
+                        en_args(code, cmd->arg1, cmd->arg2);
                         break;
                 case INSTR_DIV:
+                        en_add_byte(code, DIV | SIZE_MASK);
                 case INSTR_MUL:
                         /* TODO: Mul/div: handle somehow */
+                        break;
                 case INSTR_OR:
+                        en_add_byte(code, OR | SIZE_MASK);
+                        en_args(code, cmd->arg1, cmd->arg2);
+                        break;
                 case INSTR_AND:
+                        en_add_byte(code, AND | SIZE_MASK);
+                        en_args(code, cmd->arg1, cmd->arg2);
+                        break;
                 case INSTR_XOR:
-                        /* TODO: Same as ADD */
+                        en_add_byte(code, XOR | SIZE_MASK);
+                        en_args(code, cmd->arg1, cmd->arg2);
+                        break;
                         break;
                 case INSTR_CALL:
                         /* TODO: How to calculate relative jump? */
                         en_add_byte(code, CALL);
-                        en_add_imm32(code, &cmd.arg1.val.imm);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
                         break;
                 case INSTR_JMP:
                         /* TODO: Same question */
                         en_add_byte(code, JMP);
-                        en_add_imm32(code, &cmd.arg1.val.imm);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
                         break;
                 case INSTR_CMP:
-                        en_add_byte(code, CMP + DEST_MASK);
-                        en_args(code, cmd.arg1, cmd.arg2);
+                        en_add_byte(code, CMP | DEST_MASK);
+                        en_args(code, cmd->arg1, cmd->arg2);
                         break;
                 default:
                         assert(0 && "Invalid instruction.");

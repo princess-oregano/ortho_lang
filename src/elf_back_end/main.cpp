@@ -11,9 +11,11 @@ main()
         code_t code = {};
         en_code_ctor(&code, 1000);
 
-        arg_t arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
-        arg_t arg2 = {.type = ARG_MEM, .val = {.mem = {.reg_on = true, .reg = REG_ECX}}};
-        encode(&code, {.instr = INSTR_ADD, .arg1 = arg1, .arg2 = arg2});
+        arg_t arg1 = {.type = ARG_MEM, .val = {.mem = {.sib_on = true, .disp_on = true, .reg_on = true, 
+                                        .scale = 8, .index = REG_EBX, .disp = 8, .reg = REG_EAX}}};
+        arg_t arg2 = {.type = ARG_IMM, .val = {.imm = 21}};
+        cmd_token_t cmd = {.instr = INSTR_MOV, .arg1 = arg1, .arg2 = arg2};
+        en_emit(&code, &cmd);
 
         for (int i = 0; i < code.size; i++) {
                 fprintf(stderr, "%02x ", code.code[i]);

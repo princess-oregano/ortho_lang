@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <stdint.h>
+#include <sys/types.h>
 
 // Prefixes.
 const uint8_t PUSH_POP_MEM = 0x66;
@@ -13,9 +14,10 @@ const uint8_t PUSH_IMM    = 0x68;
 const uint8_t PUSH_REG    = 0x50;
 const uint8_t PUSH_MEM    = 0xFF;
 const uint8_t POP_REG     = 0x58;
-const uint8_t MOV_REG_IMM = 0xB8;
-const uint8_t MOV_MEM_IMM = 0xC7;
 const uint8_t MOV         = 0x88;
+const uint8_t MOV_REG_IMM = 0xB8;
+const uint8_t MOV_MEM_IMM = 0xC6;
+const uint8_t XCHG        = 0x86;
 
 const uint8_t ADD         = 0x00;
 const uint8_t SUB         = 0x28;
@@ -128,7 +130,7 @@ en_code_ctor(code_t *code, long long cap);
 
 /// Encodes given token and places it to array with code.
 int
-encode(code_t *code, cmd_token_t cmd);
+en_emit(code_t *code, cmd_token_t *cmd);
 
 /// Destructs code_t structure.
 void

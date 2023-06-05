@@ -12,8 +12,8 @@
 
 static int LABEL_COUNT = 0;
 static int RAM_OFFSET = 0;
-static stack_t var_stack {};
-static table_t func_table{};
+static stack_t var_stack = {};
+static table_t func_table = {};
 
 static int
 get_delim_buf(char **line, int delim, char *buffer)
@@ -52,7 +52,7 @@ gen_assign(tree_t *ast, int *pos, FILE *stream)
                 RAM_OFFSET++;
         }
 
-        fprintf(stream, "        pop [rbx + %d]\n", offset);
+        fprintf(stream, "        pop [rbx + %d]\n", offset * 4);
 }
 
 static int
