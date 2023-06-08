@@ -6,8 +6,6 @@
 #include <sys/types.h>
 #include "encode.h"
 
-/* TODO: change name to emitter */
-
 int 
 en_code_resize(code_t *code, long long new_cap)
 {
@@ -289,10 +287,24 @@ en_imm(code_t *code, cmd_token_t *cmd)
                         en_args(code, cmd->arg1, tmp_arg);
                         en_add_imm32(code, &cmd->arg2.val.imm);
                         break;
+                case INSTR_JMP:
+                        /* TODO: Same question */
+                        en_add_byte(code, JMP);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
+                        break;
+                case INSTR_INT:
+                        en_add_byte(code, INT);
+                        en_add_byte(code, cmd->arg1.val.imm);
+                        break;
+                case INSTR_RET:
+                        en_add_byte(code, RET);
+                        break;
+                case INSTR_CALL:
+                        en_add_byte(code, CALL);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
+                        break;
                 case INSTR_DIV:
                 case INSTR_MUL:
-                case INSTR_CALL:
-                case INSTR_JMP:
                 default:
                         assert(0 && "Invalid instruction.");
                         break;
@@ -331,6 +343,7 @@ en_emit(code_t *code, cmd_token_t *cmd)
                         break;
                 case INSTR_DIV:
                         en_add_byte(code, DIV | SIZE_MASK);
+                        break;
                 case INSTR_MUL:
                         /* TODO: Mul/div: handle somehow */
                         break;
@@ -347,20 +360,14 @@ en_emit(code_t *code, cmd_token_t *cmd)
                         en_args(code, cmd->arg1, cmd->arg2);
                         break;
                         break;
-                case INSTR_CALL:
-                        /* TODO: How to calculate relative jump? */
-                        en_add_byte(code, CALL);
-                        en_add_imm32(code, &cmd->arg1.val.imm);
-                        break;
-                case INSTR_JMP:
-                        /* TODO: Same question */
-                        en_add_byte(code, JMP);
-                        en_add_imm32(code, &cmd->arg1.val.imm);
-                        break;
                 case INSTR_CMP:
                         en_add_byte(code, CMP | DEST_MASK);
                         en_args(code, cmd->arg1, cmd->arg2);
                         break;
+                case INSTR_CALL:
+                case INSTR_JMP:
+                case INSTR_INT:
+                case INSTR_RET:
                 default:
                         assert(0 && "Invalid instruction.");
                         break;

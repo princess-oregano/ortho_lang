@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdint.h>
+
 // Enum of available puntuators.
 #define DEF_PUNC(NAME, SIGN) PUNC_##NAME,
 enum punc_t {
@@ -49,7 +51,7 @@ enum tok_type_t {
 union value_t {
         punc_t punc;           // Punctuator.
         char *var;             // Variable. Later extend this.
-        double num;            // Number value.
+        uint32_t num;            // Number value.
         op_t op;               // Operation.
         kword_t kw;            // Keyword.
         embed_t em;            // Embedded function.

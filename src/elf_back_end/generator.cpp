@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
+#include "encode.h"
 #include "generator.h"
 #include "symbol.h"
 #include "../stack/stack.h"
@@ -37,44 +38,49 @@ get_delim_buf(char **line, int delim, char *buffer)
 }
 
 static void
-gen_assign(tree_t *ast, int *pos, FILE *stream)
+gen_assign(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
 
         int tmp = ast->nodes[*pos].left;
 
-        int offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
+        uint32_t offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
         if (offset == -1) {
                 sym_insert(ast->nodes[tmp].data.val.var, var_stack.data[var_stack.size - 1], RAM_OFFSET);
                 offset = RAM_OFFSET;
                 RAM_OFFSET++;
         }
 
-        fprintf(stream, "        pop [rbx + %d]\n", offset * 4);
+        cmd_token_t cmd = {.instr = INSTR_POP, .arg1 = {.type = ARG_MEM, 
+                .val = {.mem = {.disp_on = true, .reg_on = true, .disp = offset * 4, .reg = REG_EBP}}}};
+        en_emit(code, &cmd);
+        // fprintf(stream, "        pop [rbx + %d]\n", offset * 4);
 }
 
 static int
-gen_push_args(tree_t *ast, int *pos, FILE *stream, int *num_of_args)
+gen_push_args(tree_t *ast, int *pos, code_t *code, uint32_t *num_of_args)
 {
         if (ast->nodes[*pos].data.type == TOK_POISON)
                 return GEN_NO_ERR;
 
-        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+        gen_write_asm(ast, &ast->nodes[*pos].right, code);
 
         (*num_of_args)++;
-        gen_push_args(ast, &ast->nodes[*pos].left, stream, num_of_args);
+        gen_push_args(ast, &ast->nodes[*pos].left, code, num_of_args);
 
         return GEN_NO_ERR;
 }
 
 int
-gen_identifier(tree_t *ast, int *pos, FILE *stream)
+gen_identifier(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
+
+        cmd_token_t cmd = {};
 
         char *name = ast->nodes[*pos].data.val.var;
 
@@ -88,54 +94,62 @@ gen_identifier(tree_t *ast, int *pos, FILE *stream)
                         return GEN_UNDECL;
                 }
         } else {
-                int num_of_args = 0;
-                gen_push_args(ast, &ast->nodes[*pos].left, stream, &num_of_args);
-                fprintf(stream, "\n        push rbx\n"
-                                  "        call :.%s\n"
-                                  "        pop rbx\n\n", name);
+                uint32_t num_of_args = 0;
+                gen_push_args(ast, &ast->nodes[*pos].left, code, &num_of_args);
+                cmd.instr = INSTR_PUSH;
+                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                en_emit(code, &cmd);
 
-                fprintf(stream, "\n        push rsp\n"
-                                  "        push %d\n"
-                                  "        sub\n"
-                                  "        pop rsp\n", num_of_args);
+                cmd.instr = INSTR_POP;
+                en_emit(code, &cmd);
 
-                fprintf(stream,   "        push rax\n");
+                cmd.instr = INSTR_CALL;
+                cmd.arg1 = {.type = ARG_IMM, .val = {.imm = 0}};
+                en_emit(code, &cmd);
+
+                cmd.instr = INSTR_SUB;
+                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
+                cmd.arg2 = {.type = ARG_IMM, .val = {.imm = num_of_args * 4}};
+                en_emit(code, &cmd);
+                /*
+                 *fprintf(stream, "\n        push rsp\n"
+                 *                  "        push %d\n"
+                 *                  "        sub\n"
+                 *                  "        pop rsp\n", num_of_args);
+                 */
+
+                cmd.instr = INSTR_PUSH;
+                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
+                /*
+                 *fprintf(stream,   "        push rax\n");
+                 */
                 return GEN_NO_ERR;
         }
 
-        fprintf(stream, "        push [rbx + %d]\n", offset);
+        cmd.instr = INSTR_PUSH;
+        cmd.arg1.type = ARG_MEM;
+        cmd.arg1.val = {.mem = {.disp_on = true,               .reg_on = true, 
+                                .disp = (uint32_t) offset * 4, .reg = REG_EBP}};
+        en_emit(code, &cmd);
 
         return GEN_NO_ERR;
 }
 
 static int
-gen_embedded(tree_t *ast, int *pos, FILE *stream)
+gen_embedded(tree_t *ast, int *pos, code_t *code)
 {
+        assert(ast);
+        assert(pos);
+        assert(code);
+
         int tmp = 0;
         int offset = 0;
         switch(ast->nodes[*pos].data.val.em) {
                 case EMBED_PRINT:
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        out\n");
-                        break;
                 case EMBED_SIN:
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        sin\n");
-                        break;
                 case EMBED_COS:
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        cos\n");
-                        break;
                 case EMBED_SQRT:
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        sqrt\n");
-                        break;
                 case EMBED_SCAN:
-                        fprintf(stream, "        in\n");
-                        tmp = ast->nodes[ast->nodes[*pos].left].right;
-                        offset = sym_find(ast->nodes[tmp].data.val.var, &var_stack);
-                        fprintf(stream, "        pop [rbx + %d]\n", offset);
-                        break;
                 default:
                         assert(0 && "Invalid embedded function code.");
                         break;
@@ -145,30 +159,37 @@ gen_embedded(tree_t *ast, int *pos, FILE *stream)
 }
 
 static int
-gen_parameter(tree_t *ast, int *pos, FILE *stream)
+gen_parameter(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
 
         if (ast->nodes[*pos].data.type != TOK_POISON) {
-                int offset = RAM_OFFSET++;
+                uint32_t offset = RAM_OFFSET++;
                 sym_insert(ast->nodes[*pos].data.val.var, 
                            var_stack.data[var_stack.size - 1], offset);
 
-                fprintf(stream, "        pop [rbx + %d]\n", offset);
-                gen_parameter(ast, &ast->nodes[*pos].left, stream);
-                fprintf(stream, "        push [rbx + %d]\n", offset);
+                cmd_token_t cmd = {.instr = INSTR_POP, .arg1 = {.type = ARG_MEM, 
+                        .val = {.mem = {.disp_on = true, .reg_on = true, .disp = offset * 4, .reg = REG_EBP}}}};
+                en_emit(code, &cmd);
+                // fprintf(stream, "        pop [rbx + %d]\n", offset);
+                //
+                gen_parameter(ast, &ast->nodes[*pos].left, code);
+
+                cmd.instr = INSTR_PUSH;
+                en_emit(code, &cmd);
+                // fprintf(stream, "        push [rbx + %d]\n", offset);
         }
         
         return GEN_NO_ERR;
 }
 
 int
-generator(char *ast_buffer, FILE *asm_stream)
+generator(char *ast_buffer, code_t *code)
 {
         assert(ast_buffer);
-        assert(asm_stream);
+        assert(code);
 
         stack_ctor(&var_stack, 10, STK_VAR_INFO(var_stack));
         sym_ctor(100, &func_table);
@@ -182,72 +203,103 @@ generator(char *ast_buffer, FILE *asm_stream)
         gen_restore(&ast, ast_buffer, &ast.root, &id);
         include_graph(tree_graph_dump(&ast, VAR_INFO(ast)));
 
-        setvbuf(asm_stream, nullptr, _IONBF, 0);
-
-        fprintf(asm_stream, "jmp :.main\n\n");
-        gen_write_asm(&ast, &ast.root, asm_stream);
+        // fprintf(asm_stream, "jmp :.main\n\n");
+        gen_write_asm(&ast, &ast.root, code);
 
         id_free(&id);
         sym_dtor(&func_table);
         stack_dtor(&var_stack);
         tree_dtor(&ast);
+
         return GEN_NO_ERR;
 }
 
 int
-gen_write_asm(tree_t *ast, int *pos, FILE *stream)
+gen_write_asm(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
+
+        cmd_token_t cmd = {};
 
         switch (ast->nodes[*pos].data.type) {
                 case TOK_FUNC:
                         RAM_OFFSET = 0;
-                        fprintf(stream, ".%s:\n"
-                                        "        push rsp\n"
-                                        "        pop rbx\n\n", ast->nodes[*pos].data.val.var);
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+
+                        cmd.instr = INSTR_MOV;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                        en_emit(code, &cmd);
+
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+
                         if (strcmp("main", ast->nodes[*pos].data.val.var) == 0) {
-                                fprintf(stream, "\n        push rbx\n"
-                                                  "        pop rsp\n");
-                                fprintf(stream,   "        hlt\n\n");
+                                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                                cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
+                                en_emit(code, &cmd);
+
+                                cmd.instr = INSTR_MOV;
+                                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
+                                cmd.arg2 = {.type = ARG_IMM, .val = {.imm = 1}};
+                                en_emit(code, &cmd);
+
+                                cmd.arg1.val.reg = REG_EBX;
+                                cmd.arg2.val.imm = 0;
+                                en_emit(code, &cmd);
+
+                                cmd.instr = INSTR_INT;
+                                cmd.arg1 = {.type = ARG_IMM, .val = {.imm = 0x80}};
+                                en_emit(code, &cmd);
                         }
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, code);
                         break;
                 case TOK_BLOCK:
                         sym_new_table(&var_stack);
                         if (ast->nodes[ast->nodes[*pos].left].data.type != TOK_POISON) {
-                                fprintf(stream, "        pop rcx\n        pop rdx\n");
-                                gen_parameter(ast, &ast->nodes[*pos].left, stream);
-                                fprintf(stream, "        push rdx\n        push rcx\n");
+                                cmd.instr = INSTR_PUSH;
+                                cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                                en_emit(code, &cmd);
+
+                                cmd.arg1.val.reg = REG_EDX;
+                                en_emit(code, &cmd);
+
+                                gen_parameter(ast, &ast->nodes[*pos].left, code);
+
+                                cmd.instr = INSTR_PUSH;
+                                en_emit(code, &cmd);
+
+                                cmd.arg1.val.reg  = REG_ECX;
+                                en_emit(code, &cmd);
                         }
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
                         sym_remove_table(&var_stack);
                         break;
                 case TOK_EMBED:
-                        gen_embedded(ast, pos, stream);
+                        gen_embedded(ast, pos, code);
                         break;
                 case TOK_EXP:
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+                        gen_write_asm(ast, &ast->nodes[*pos].left, code);
                         break;
                 case TOK_POISON:
                         break;
                 case TOK_DECL:
                         break;
                 case TOK_VAR:
-                        if (gen_identifier(ast, pos, stream) != GEN_NO_ERR)
+                        if (gen_identifier(ast, pos, code) != GEN_NO_ERR)
                                 return GEN_UNDECL;
                         break;
                 case TOK_NUM:
-                        fprintf(stream, "        push %lg\n", ast->nodes[*pos].data.val.num);
+                        cmd.instr = INSTR_PUSH;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = ast->nodes[*pos].data.val.num}};
+                        en_emit(code, &cmd);
                         break;
                 case TOK_OP:
-                        gen_op(ast, pos, stream);
+                        gen_op(ast, pos, code);
                         break;
                 case TOK_KW:
-                        gen_kw(ast, pos, stream);
+                        gen_kw(ast, pos, code);
                         break;
                 case TOK_PUNC:
                         assert(0 && "Punctuator encountered.");
@@ -263,101 +315,121 @@ gen_write_asm(tree_t *ast, int *pos, FILE *stream)
 }
 
 void
-gen_op(tree_t *ast, int *pos, FILE *stream)
+gen_op(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
 
         if (ast->nodes[*pos].data.val.op != OP_ASSIGN)
-                gen_write_asm(ast, &ast->nodes[*pos].left, stream);
+                gen_write_asm(ast, &ast->nodes[*pos].left, code);
 
-        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
+        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+
+        cmd_token_t cmd = {.instr = INSTR_POP, .arg1 = {.type = ARG_REG}};
+
+        cmd.arg1.val.reg = REG_EAX;
+        en_emit(code, &cmd);
+        cmd.arg1.val.reg = REG_EBX;
+        en_emit(code, &cmd);
+
+        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
+        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
 
         switch(ast->nodes[*pos].data.val.op) {
                 case OP_ADD:
-                        fprintf(stream, "        add\n");
+                        cmd.instr = INSTR_ADD;
                         break;
                 case OP_SUB:
-                        fprintf(stream, "        sub\n");
+                        cmd.instr = INSTR_SUB;
                         break;
+                // TODO: handle MUL/DIV.
                 case OP_MUL:
-                        fprintf(stream, "        mul\n");
+                        cmd.instr = INSTR_MUL;
                         break;
                 case OP_DIV:
-                        fprintf(stream, "        div\n");
+                        cmd.instr = INSTR_DIV;
                         break;
                 case OP_ASSIGN:
-                        gen_assign(ast, pos, stream);
+                        gen_assign(ast, pos, code);
                         break;
                 case OP_EQ:
-                        fprintf(stream, "        eq\n");
+                        cmd.instr = INSTR_CMP;
                         break;
                 case OP_NEQ:
-                        fprintf(stream, "        neq\n");
                         break;
                 case OP_LEQ:
-                        fprintf(stream, "        geq\n");
                         break;
                 case OP_GEQ:
-                        fprintf(stream, "        leq\n");
                         break;
                 case OP_LESSER:
-                        fprintf(stream, "        gtr\n");
                         break;
                 case OP_GREATER:
-                        fprintf(stream, "        lsr\n");
                         break;
                 default:
                         assert(0 && "Invalid operation type.");
                         break;
         }
+
+        cmd.instr = INSTR_PUSH;
+        cmd.arg1.type = ARG_REG;
+        cmd.arg1.val.reg = REG_EAX;
+        en_emit(code, &cmd);
 }
 
 void
-gen_kw(tree_t *ast, int *pos, FILE *stream)
+gen_kw(tree_t *ast, int *pos, code_t *code)
 {
         assert(ast);
         assert(pos);
-        assert(stream);
+        assert(code);
+
+        cmd_token_t cmd = {};
 
         int label1 = LABEL_COUNT++;
         int label2 = 0;
         switch(ast->nodes[*pos].data.val.kw) {
                 case KW_WHILE:
-                        fprintf(stream, "L%d:\n", label1);
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        label2 = LABEL_COUNT++;
-                        fprintf(stream, "        push 0\n"
-                                        "        je :L%d\n", label2);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "        jmp :L%d\n"
-                                        "L%d:\n", label1, label2);
-                        break;
+                        //fprintf(stream, "L%d:\n", label1);
+                        //gen_write_asm(ast, &ast->nodes[*pos].right, code);
+                        //label2 = LABEL_COUNT++;
+                        //fprintf(stream, "        push 0\n"
+                                        //"        je :L%d\n", label2);
+                        //gen_write_asm(ast, &ast->nodes[*pos].left, code);
+                        //fprintf(stream, "        jmp :L%d\n"
+                                        //"L%d:\n", label1, label2);
+                        //break;
                 case KW_IF:
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        fprintf(stream, "        push 0\n"
-                                        "        je :L%d\n", label1);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "L%d:\n", label1);
-                        break;
+                        //gen_write_asm(ast, &ast->nodes[*pos].right, code);
+                        //fprintf(stream, "        push 0\n"
+                                        //"        je :L%d\n", label1);
+                        //gen_write_asm(ast, &ast->nodes[*pos].left, code);
+                        //fprintf(stream, "L%d:\n", label1);
+                        //break;
                 case KW_ELSE:
-                        gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].right, stream);
-                        label2 = LABEL_COUNT++;
-                        fprintf(stream, "        push 0\n"
-                                        "        je :L%d\n", label1);
-                        gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].left, stream);
-                        fprintf(stream, "        jmp :L%d\n", label2);
-                        fprintf(stream, "L%d:\n", label1);
-                        gen_write_asm(ast, &ast->nodes[*pos].left, stream);
-                        fprintf(stream, "L%d:\n", label2);
-                        break;
+                        //gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].right, code);
+                        //label2 = LABEL_COUNT++;
+                        //fprintf(stream, "        push 0\n"
+                                        //"        je :L%d\n", label1);
+                        //gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].left, code);
+                        //fprintf(stream, "        jmp :L%d\n", label2);
+                        //fprintf(stream, "L%d:\n", label1);
+                        //gen_write_asm(ast, &ast->nodes[*pos].left, code);
+                        //fprintf(stream, "L%d:\n", label2);
+                        //break;
                 case KW_RETURN:
-                        gen_write_asm(ast, &ast->nodes[*pos].right, stream);
-                        fprintf(stream,   "        pop rax\n");
-                        fprintf(stream, "\n        push rbx\n"
-                                          "        pop rsp\n");
-                        fprintf(stream,   "        ret\n");
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+                        cmd.instr = INSTR_POP;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EAX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_MOV;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_RET;
+                        en_emit(code, &cmd);
                         break;
                 default:
                         assert(0 && "Invalid keyword type.");

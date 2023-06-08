@@ -20,7 +20,7 @@ OBJDIR_TREE := $(addprefix $(OBJDIR)/, $(TREE))
 OBJDIR_STACK := $(addprefix $(OBJDIR)/, $(STACK))
 
 SRC := args.cpp file.cpp log.cpp identifiers.cpp 
-SRC_BACK_END := main.cpp encode.cpp
+SRC_BACK_END := main.cpp encode.cpp generator.cpp symbol.cpp
 SRC_FRONT_END := main.cpp lexer.cpp parser.cpp
 SRC_TREE := tree.cpp tree_dump.cpp system.cpp
 SRC_STACK := stack.cpp error.cpp 

@@ -27,8 +27,11 @@ const uint8_t OR          = 0x08;
 const uint8_t AND         = 0x20;
 const uint8_t XOR         = 0x30;
 const uint8_t CMP         = 0x38;
+const uint8_t JE          = 0x74;
 const uint8_t JMP         = 0xE9;
 const uint8_t CALL        = 0xE8;
+const uint8_t INT         = 0xCD;
+const uint8_t RET         = 0xC3;
 
 // Immediate arg exception.
 const uint8_t IMM_EXC     = 0x80;
@@ -109,6 +112,8 @@ enum instr_t {
         INSTR_XOR  = 10,
         INSTR_CMP  = 11,
         INSTR_JMP  = 12,
+        INSTR_INT  = 13,
+        INSTR_RET  = 14,
 };
 
 /// Instruction token.
