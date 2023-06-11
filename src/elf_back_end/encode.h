@@ -14,6 +14,7 @@ const uint8_t PUSH_IMM    = 0x68;
 const uint8_t PUSH_REG    = 0x50;
 const uint8_t PUSH_MEM    = 0xFF;
 const uint8_t POP_REG     = 0x58;
+const uint8_t POP_MEM     = 0x8F;
 const uint8_t MOV         = 0x88;
 const uint8_t MOV_REG_IMM = 0xB8;
 const uint8_t MOV_MEM_IMM = 0xC6;
@@ -114,6 +115,7 @@ enum instr_t {
         INSTR_JMP  = 12,
         INSTR_INT  = 13,
         INSTR_RET  = 14,
+        INSTR_JE   = 15,
 };
 
 /// Instruction token.
@@ -136,6 +138,10 @@ en_code_ctor(code_t *code, long long cap);
 /// Encodes given token and places it to array with code.
 int
 en_emit(code_t *code, cmd_token_t *cmd);
+
+/// Adds imm32 to specific location in code (used for lables).
+void
+en_insert_imm32(code_t *code, uint32_t *imm, uint32_t location);
 
 /// Destructs code_t structure.
 void

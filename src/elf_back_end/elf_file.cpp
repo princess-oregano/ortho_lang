@@ -5,14 +5,14 @@
 void
 elf_write_header(FILE *stream)
 {
-        Elf64_Ehdr header = {};
+        Elf32_Ehdr header = {};
         
         header.e_ident[EI_MAG0] = ELFMAG0;
         header.e_ident[EI_MAG1] = ELFMAG1;
         header.e_ident[EI_MAG2] = ELFMAG2;
         header.e_ident[EI_MAG3] = ELFMAG3;
 
-        header.e_ident[EI_CLASS] = ELFCLASS64;
+        header.e_ident[EI_CLASS] = ELFCLASS32;
         header.e_ident[EI_DATA] = ELFDATA2LSB;
         header.e_ident[EI_VERSION] = EV_CURRENT;
         header.e_ident[EI_OSABI] = ELFOSABI_SYSV;
@@ -39,15 +39,25 @@ elf_write_header(FILE *stream)
 void
 elf_write_prg_hdr()
 {
-        Elf64_Phdr hdr = {};
+        Elf32_Phdr hdr = {};
 
         hdr.p_type = PT_LOAD;
+
+        hdr.p_offset = 0;
+
+        hdr.p_vaddr = 0;
+        hdr.p_paddr = 0;
+
+        hdr.p_filesz = 0;
+        hdr.p_memsz = 0;
+
         hdr.p_flags = PF_X | PF_R;
 
+        hdr.p_align = 0;
 }
 
 void
-elf_write_exec(const code_t *code)
+elf_write_exec(const code_t *code, FILE *elf_file)
 {
-        
+        fwrite(const void *__restrict ptr, size_t size, size_t n, FILE *__restrict s);
 }

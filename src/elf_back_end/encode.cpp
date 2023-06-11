@@ -218,7 +218,7 @@ en_push_pop(code_t *code, cmd_token_t *cmd)
                         en_add_imm32(code, &cmd->arg1.val.imm);
                         break;
                 case ARG_MEM:
-                        en_add_byte(code, PUSH_MEM);
+                        en_add_byte(code, (cmd->instr == INSTR_PUSH) ? PUSH_MEM : POP_MEM);
                         en_mem(code, &cmd->arg1, &mem_push_pop);
                         break;
                 case ARG_INV:
@@ -287,25 +287,15 @@ en_imm(code_t *code, cmd_token_t *cmd)
                         en_args(code, cmd->arg1, tmp_arg);
                         en_add_imm32(code, &cmd->arg2.val.imm);
                         break;
-                case INSTR_JMP:
-                        /* TODO: Same question */
-                        en_add_byte(code, JMP);
-                        en_add_imm32(code, &cmd->arg1.val.imm);
-                        break;
                 case INSTR_INT:
-                        en_add_byte(code, INT);
-                        en_add_byte(code, cmd->arg1.val.imm);
-                        break;
                 case INSTR_RET:
-                        en_add_byte(code, RET);
-                        break;
                 case INSTR_CALL:
-                        en_add_byte(code, CALL);
-                        en_add_imm32(code, &cmd->arg1.val.imm);
-                        break;
+                case INSTR_JMP:
+                case INSTR_JE:
                 case INSTR_DIV:
                 case INSTR_MUL:
                 default:
+                        fprintf(stderr, "%d", cmd->instr);
                         assert(0 && "Invalid instruction.");
                         break;
         }
@@ -365,9 +355,24 @@ en_emit(code_t *code, cmd_token_t *cmd)
                         en_args(code, cmd->arg1, cmd->arg2);
                         break;
                 case INSTR_CALL:
+                        en_add_byte(code, CALL);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
+                        break;
                 case INSTR_JMP:
+                        en_add_byte(code, JMP);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
+                        break;
+                case INSTR_JE:
+                        en_add_byte(code, JE);
+                        en_add_imm32(code, &cmd->arg1.val.imm);
+                        break;
                 case INSTR_INT:
+                        en_add_byte(code, INT);
+                        en_add_byte(code, cmd->arg1.val.imm);
+                        break;
                 case INSTR_RET:
+                        en_add_byte(code, RET);
+                        break;
                 default:
                         assert(0 && "Invalid instruction.");
                         break;
@@ -376,3 +381,12 @@ en_emit(code_t *code, cmd_token_t *cmd)
         return EN_NO_ERR;
 }
 
+void
+en_insert_imm32(code_t *code, uint32_t *imm, uint32_t location)
+{
+        uint8_t *imm8 = (uint8_t *) imm;
+
+        for (int i = 0; i < 3; i++) {
+                code->code[location + i] = imm8[i];
+        }
+}

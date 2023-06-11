@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -228,8 +229,8 @@ gen_write_asm(tree_t *ast, int *pos, code_t *code)
                         RAM_OFFSET = 0;
 
                         cmd.instr = INSTR_MOV;
-                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
-                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBP}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_ESP}};
                         en_emit(code, &cmd);
 
                         gen_write_asm(ast, &ast->nodes[*pos].right, code);
@@ -250,6 +251,7 @@ gen_write_asm(tree_t *ast, int *pos, code_t *code)
 
                                 cmd.instr = INSTR_INT;
                                 cmd.arg1 = {.type = ARG_IMM, .val = {.imm = 0x80}};
+                                cmd.arg2 = {.type = ARG_INV};
                                 en_emit(code, &cmd);
                         }
                         gen_write_asm(ast, &ast->nodes[*pos].left, code);
@@ -354,7 +356,6 @@ gen_op(tree_t *ast, int *pos, code_t *code)
                         gen_assign(ast, pos, code);
                         break;
                 case OP_EQ:
-                        cmd.instr = INSTR_CMP;
                         break;
                 case OP_NEQ:
                         break;
@@ -386,10 +387,47 @@ gen_kw(tree_t *ast, int *pos, code_t *code)
 
         cmd_token_t cmd = {};
 
-        int label1 = LABEL_COUNT++;
-        int label2 = 0;
+        uint32_t label1 = 0;
+        uint32_t label2 = 0;
+        uint32_t tmp   = 0;
+        uint32_t tmp2  = 0;
+
         switch(ast->nodes[*pos].data.val.kw) {
                 case KW_WHILE:
+                        // TODO: calculate rel8.
+                        label1 = code->size;
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+
+                        cmd.instr = INSTR_XOR;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        cmd.arg2 = cmd.arg1;
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_PUSH;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_CMP;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_JE;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = label2}};
+                        en_emit(code, &cmd);
+                        tmp = code->size;
+
+                        gen_write_asm(ast, &ast->nodes[*pos].left, code);
+
+                        cmd.instr = INSTR_JMP;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = label1 - (uint32_t) code->size - 4}};
+                        en_emit(code, &cmd);
+
+                        label2 = code->size - tmp;
+                        en_insert_imm32(code, &label2, tmp - 4);
+
+                        break;
+
                         //fprintf(stream, "L%d:\n", label1);
                         //gen_write_asm(ast, &ast->nodes[*pos].right, code);
                         //label2 = LABEL_COUNT++;
@@ -400,6 +438,34 @@ gen_kw(tree_t *ast, int *pos, code_t *code)
                                         //"L%d:\n", label1, label2);
                         //break;
                 case KW_IF:
+                        gen_write_asm(ast, &ast->nodes[*pos].right, code);
+
+                        cmd.instr = INSTR_XOR;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        cmd.arg2 = cmd.arg1;
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_PUSH;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_CMP;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_JE;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = label2}};
+                        en_emit(code, &cmd);
+                        tmp = code->size;
+
+                        gen_write_asm(ast, &ast->nodes[*pos].left, code);
+
+                        label2 = code->size - tmp;
+                        en_insert_imm32(code, &label2, tmp - 4);
+
+                        break;
+
                         //gen_write_asm(ast, &ast->nodes[*pos].right, code);
                         //fprintf(stream, "        push 0\n"
                                         //"        je :L%d\n", label1);
@@ -407,6 +473,43 @@ gen_kw(tree_t *ast, int *pos, code_t *code)
                         //fprintf(stream, "L%d:\n", label1);
                         //break;
                 case KW_ELSE:
+                        gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].right, code);
+
+                        cmd.instr = INSTR_XOR;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        cmd.arg2 = cmd.arg1;
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_PUSH;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_CMP;
+                        cmd.arg1 = {.type = ARG_REG, .val = {.reg = REG_ECX}};
+                        cmd.arg2 = {.type = ARG_REG, .val = {.reg = REG_EBX}};
+                        en_emit(code, &cmd);
+
+                        cmd.instr = INSTR_JE;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = label1}};
+                        en_emit(code, &cmd);
+                        tmp = code->size;
+
+                        gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].left, code);
+
+                        cmd.instr = INSTR_JMP;
+                        cmd.arg1 = {.type = ARG_IMM, .val = {.imm = label1 - (uint32_t) code->size - 4}};
+                        en_emit(code, &cmd);
+                        tmp2 = code->size;
+
+                        label1 = code->size - tmp;
+                        gen_write_asm(ast, &ast->nodes[*pos].left, code);
+                        label2 = code->size - tmp2;
+
+                        en_insert_imm32(code, &label1, tmp - 4);
+                        en_insert_imm32(code, &label2, tmp2 - 4);
+
+                        break;
+
                         //gen_write_asm(ast, &ast->nodes[ast->nodes[*pos].right].right, code);
                         //label2 = LABEL_COUNT++;
                         //fprintf(stream, "        push 0\n"
